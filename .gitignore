@@ -23,3 +23,8 @@ data/processed/*
 !data/processed/.gitkeep
 logs
 explanation.md
+__pycache__/
+*.pyc
+mlruns/
+artifacts/
+data/processed/
