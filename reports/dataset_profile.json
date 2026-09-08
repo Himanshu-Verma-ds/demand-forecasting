@@ -1,0 +1,13 @@
+{
+  "rows": 1100000,
+  "min_date": "2021-01-01",
+  "max_date": "2023-12-31",
+  "dates": 1095,
+  "stores": 13,
+  "skus": 102,
+  "pairs": 1005,
+  "categories": 5,
+  "subcategories": 17,
+  "promo_rate": 0.08023363636363637,
+  "stockout_rate": 0.030103636363636364
+}

@@ -1,0 +1,7 @@
+selected_model:
+  name: null
+  family: null
+  artifact_path: null
+  selected_at: null
+  metrics: {}
+  notes: "Run src/demand_forecasting/select_model.py after evaluation."

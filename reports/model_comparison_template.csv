@@ -1,0 +1,9 @@
+model,scope,val_wape,val_mae,val_rmse,test_wape,test_mae,test_rmse,channel_notes,category_notes,promo_notes,latency_ms,artifact_size_mb,recommendation
+seasonal_naive,global,,,,,,,,,,,,baseline
+lightgbm,global,,,,,,,,,,,,
+xgboost,global,,,,,,,,,,,,
+catboost,global,,,,,,,,,,,,
+lstm,global_shared_weights,,,,,,,,,,,,
+transformer,global_shared_weights,,,,,,,,,,,,
+tide,global_shared_weights,,,,,,,,,,,,
+tsmixer,global_shared_weights,,,,,,,,,,,,

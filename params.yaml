@@ -1,0 +1,6 @@
+prepare:
+  input: data/raw/data.csv
+  output: data/processed/features.parquet
+  config: configs/config.yaml
+train:
+  config: configs/config.yaml

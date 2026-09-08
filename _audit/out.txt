@@ -1,0 +1,3 @@
+/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/src/demand_forecasting/tune_bayesian.py:157: ExperimentalWarning: Argument ``multivariate`` is an experimental feature. The interface can change in the future.
+  sampler = optuna.samplers.TPESampler(
+[I 2026-09-08 14:55:22,425] A new study created in memory with name: lightgbm-wape

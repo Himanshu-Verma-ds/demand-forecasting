@@ -1,0 +1,17 @@
+stages:
+  prepare:
+    cmd: PYTHONPATH=src python -m demand_forecasting.prepare_dataset --config configs/config.yaml --output data/processed/features.parquet
+
+    deps:
+      - data/raw/data.csv
+      - configs/config.yaml
+      - src/demand_forecasting/config.py
+      - src/demand_forecasting/data.py
+      - src/demand_forecasting/features.py
+      - src/demand_forecasting/logging_utils.py
+      - src/demand_forecasting/stockout.py
+      - src/demand_forecasting/splits.py
+      - src/demand_forecasting/prepare_dataset.py
+
+    outs:
+      - data/processed/features.parquet

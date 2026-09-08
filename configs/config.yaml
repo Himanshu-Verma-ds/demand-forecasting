@@ -1,0 +1,176 @@
+project:
+  name: fmcg_demand_forecasting
+  random_seed: 42
+
+
+logging:
+
+  # One rotating log file per pipeline step, e.g. logs/train_ml.log.
+  # The file rolls over at midnight into logs/train_ml.log.YYYY-MM-DD.
+  dir: logs
+  level: INFO
+
+  # Also stream the same records to stdout.
+  console: true
+
+  # Number of rotated daily files to retain per step.
+  backup_count: 14
+
+  # Timestamp log records in UTC instead of local time.
+  utc: false
+
+
+data:
+  raw_path: data/raw/data.csv
+  date_col: date
+  target_col: units_sold
+
+  # Lowest forecasting granularity:
+  # one time series per Store x SKU.
+  series_cols:
+    - store_id
+    - sku_id
+
+  # Forecast requirement from the assignment.
+  horizon: 14
+  lookback: 56
+
+
+split:
+  validation_days: 14
+  test_days: 14
+
+
+features:
+
+  # Historical target features
+  # Historical demand values available before forecast time.
+  demand_lags:
+    - 1
+    - 7
+    - 14
+    - 28
+
+  demand_roll_windows:    # for rolling mean and std
+    - 7
+    - 14
+    - 28
+
+
+  # Stockout Features
+
+  # We DO NOT replace units_sold with an artificially imputed
+  # demand target in the primary experiment.
+  # units_sold remains the target exactly as observed.
+  stock_roll_window: 28
+
+  stockout_target_mode: none
+
+  stockout_imputation_window: 56
+  stockout_imputation_min_periods: 7
+
+  stockout_percentage_uplift: 0.50
+
+  stockout_sample_weight: 0.50
+
+  # Historical stockout information is valid because it was known
+  # before the current/future forecast period.
+  stockout_lags:
+    - 1
+    - 7
+    - 14
+
+
+  # Known future covariates.
+  # The promotion calendar is committed ahead of the forecast origin.
+  promo_known_future: true
+
+  # Realized future prices and weather are not treated as known at forecast time.
+  price_known_future: false
+  weather_known_future: false
+
+
+training:
+
+  # null means use the complete training dataset.
+  # Can be temporarily restricted for debugging / fast experiments.
+  max_train_rows: null
+
+  # Use all available CPU cores where supported.
+  n_jobs: -1
+
+  # MLflow experiment name.
+  mlflow_experiment: fmcg-demand-forecasting
+
+  # Local output directory for trained artifacts.
+  save_dir: artifacts
+
+
+bayes:
+
+  # Number of Bayesian/Optuna trials PER model.
+  # 25 is reasonable initially; increase for final experiments.
+  n_trials: 25
+
+  # null means there is no global timeout.
+  timeout_seconds: null
+
+  tuning_models:
+    - lightgbm
+    - xgboost
+    - catboost
+
+
+ml:
+  models:
+    - lightgbm
+    - xgboost
+    - catboost
+
+
+# DL model parameters
+
+dl:
+
+  batch_size: 256
+  epochs: 30
+
+  # Stop if validation loss fails to improve for this many epochs.
+  patience: 5
+
+  learning_rate: 0.001
+  weight_decay: 0.0001
+
+  # LSTM hidden-state dimensionality.
+  hidden_size: 128
+
+  # Embedding size for categorical/static identifiers
+  embedding_dim: 16
+
+  # Number of stacked recurrent layers.
+  num_layers: 2
+  dropout: 0.15
+
+  transformer_d_model: 128
+  transformer_heads: 4
+  transformer_layers: 3
+
+  # DataLoader workers.
+  num_workers: 4
+
+# hierarchical aggregation
+hierarchy:
+  share_window_days: 56
+  share_target_col: units_sold
+  exclude_stockouts_for_shares: true
+
+# Monitoring
+monitoring:
+
+  # Population Stability Index thresholds.
+  psi_warning: 0.10
+  psi_alert: 0.25
+
+  # Alert if the promotion-rate distribution changes substantially
+  # relative to the training/reference period.
+  promo_rate_relative_change_alert: 0.30
