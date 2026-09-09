@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 
 from docx import Document
+from docx.opc.constants import RELATIONSHIP_TYPE as RT
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -45,6 +46,40 @@ def shade(cell, hex_colour: str) -> None:
     cell._tc.get_or_add_tcPr().append(element)
 
 
+def add_hyperlink(paragraph, url: str, label: str) -> None:
+    """Insert a real, clickable hyperlink styled black and underlined.
+
+    python-docx has no hyperlink API, so the relationship and the w:hyperlink element are
+    built by hand. Styling is set explicitly because Word's Hyperlink character style is
+    blue, and this document is black throughout.
+    """
+    r_id = paragraph.part.relate_to(url, RT.HYPERLINK, is_external=True)
+
+    link = OxmlElement("w:hyperlink")
+    link.set(qn("r:id"), r_id)
+
+    run = OxmlElement("w:r")
+    props = OxmlElement("w:rPr")
+
+    colour = OxmlElement("w:color")
+    colour.set(qn("w:val"), "000000")
+    props.append(colour)
+
+    underline = OxmlElement("w:u")
+    underline.set(qn("w:val"), "single")
+    props.append(underline)
+
+    run.append(props)
+
+    text_element = OxmlElement("w:t")
+    text_element.text = label
+    run.append(text_element)
+
+    link.append(run)
+    # Appended in document order: preceding runs are already on the paragraph.
+    paragraph._p.append(link)
+
+
 def add_inline(paragraph, text: str) -> None:
     """Render inline markdown into runs on an existing paragraph."""
     pos = 0
@@ -70,13 +105,7 @@ def add_inline(paragraph, text: str) -> None:
             run.font.color.rgb = BLACK
         else:
             label, url = re.match(r"\[([^\]]+)\]\(([^)]+)\)", token).groups()
-            run = paragraph.add_run(label)
-            run.font.color.rgb = BLACK
-            # Show the target inline rather than as a blue hyperlink field.
-            if url.startswith("http"):
-                hint = paragraph.add_run(f" ({url})")
-                hint.font.size = Pt(8)
-                hint.font.color.rgb = BLACK
+            add_hyperlink(paragraph, url, label)
 
         pos = match.end()
 
