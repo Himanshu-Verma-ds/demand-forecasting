@@ -26,6 +26,7 @@ BODY_FONT = "Calibri"
 
 # Everything prints black: this is a document to be read and marked up, not a web page.
 BLACK = RGBColor(0x00, 0x00, 0x00)
+LINK_BLUE = "0563C1"    # Office default hyperlink blue; the one non-black element
 HEADER_FILL = "F2F2F2"  # neutral grey for table headers, not a colour accent
 
 # Inline: `code`, **bold**, *italic*, [text](url). Order matters - code first so its
@@ -47,11 +48,10 @@ def shade(cell, hex_colour: str) -> None:
 
 
 def add_hyperlink(paragraph, url: str, label: str) -> None:
-    """Insert a real, clickable hyperlink styled black and underlined.
+    """Insert a real, clickable hyperlink: blue and underlined, so it reads as a link.
 
     python-docx has no hyperlink API, so the relationship and the w:hyperlink element are
-    built by hand. Styling is set explicitly because Word's Hyperlink character style is
-    blue, and this document is black throughout.
+    built by hand. Everything else in the document stays black; links are the one exception.
     """
     r_id = paragraph.part.relate_to(url, RT.HYPERLINK, is_external=True)
 
@@ -62,7 +62,7 @@ def add_hyperlink(paragraph, url: str, label: str) -> None:
     props = OxmlElement("w:rPr")
 
     colour = OxmlElement("w:color")
-    colour.set(qn("w:val"), "000000")
+    colour.set(qn("w:val"), LINK_BLUE)
     props.append(colour)
 
     underline = OxmlElement("w:u")
