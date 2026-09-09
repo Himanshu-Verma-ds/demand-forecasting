@@ -1,0 +1,10 @@
+{
+  "lookback": 42,
+  "learning_rate": 0.004123206532618728,
+  "dropout": 0.21959818254342153,
+  "batch_size": 128,
+  "hidden_size": 128,
+  "num_layers": 3,
+  "embedding_dim": 16,
+  "weight_decay": 4.335281794951567e-06
+}

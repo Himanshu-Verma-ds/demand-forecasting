@@ -23,10 +23,14 @@ def main():
     ap.add_argument("--model-type", default=None)
     ap.add_argument("--registry", default="configs/model_registry.yaml")
     ap.add_argument("--config", default="configs/config.yaml")
+    ap.add_argument("--metric", default=None, help="Validation metric that defines the champion (default: config training.selection_metric)")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
     logger = setup_logging("select_model", cfg)
+
+    metric = args.metric or cfg["training"].get("selection_metric", "wape")
+    rank_col = f"val_{metric}"
 
     log_run_context(
         logger,
@@ -38,6 +42,7 @@ def main():
         artifact=args.artifact,
         comparison=args.comparison,
         registry=args.registry,
+        selection_metric=metric,
     )
 
     comparison = pd.read_csv(args.comparison)
@@ -45,18 +50,21 @@ def main():
     if comparison.empty:
         raise ValueError("Model comparison file is empty")
 
-    if "model" not in comparison.columns or "val_wape" not in comparison.columns:
-        raise ValueError("Comparison file must contain model and val_wape columns")
+    if "model" not in comparison.columns or rank_col not in comparison.columns:
+        raise ValueError(f"Comparison file must contain model and {rank_col} columns")
 
-    valid = comparison.dropna(subset=["val_wape"]).sort_values("val_wape", ascending=True)
+    valid = comparison.dropna(subset=[rank_col]).sort_values(rank_col, ascending=True)
 
     if valid.empty:
-        raise ValueError("No model has a valid validation WAPE")
+        raise ValueError(f"No model has a valid validation {metric.upper()}")
 
     champion = valid.iloc[0]["model"]
 
     if args.name != champion:
-        raise ValueError(f"{args.name} is not the validation-selected champion. Current champion is {champion}")
+        raise ValueError(
+            f"{args.name} is not the validation-selected champion by {rank_col}. "
+            f"Current champion is {champion} ({rank_col}={valid.iloc[0][rank_col]:.6f})"
+        )
 
     metrics = json.loads(Path(args.metrics).read_text(encoding="utf-8"))
 
@@ -71,7 +79,8 @@ def main():
         "family": args.family.lower(),
         "artifact_path": args.artifact,
         "selected_at": datetime.now(timezone.utc).isoformat(),
-        "selection_metric": "validation_wape",
+        "selection_metric": f"validation_{metric}",
+        "selection_value": float(valid.iloc[0][rank_col]),
         "validation_metrics": validation_metrics,
         "test_metrics": test_metrics,
         "notes": "Selected using validation performance only. Test metrics are stored for final unbiased reporting and were not used for model selection.",

@@ -33,4 +33,9 @@ def cfg():
             "stockout_percentage_uplift": 0.50,
             "stockout_sample_weight": 0.50,
         },
+        "hierarchy": {
+            "share_window_days": 56,
+            "share_target_col": "units_sold",
+            "exclude_stockouts_for_shares": True,
+        },
     }

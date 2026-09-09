@@ -1,0 +1,185 @@
+2026-09-09 06:19:49 | INFO     | demand_forecasting.report_best_models | Run context:
+{
+  "artifacts_dir": "artifacts_v2",
+  "config_path": "configs/config_v2.yaml",
+  "outdir": "reports/v2",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "selection_metric": "wape",
+  "started_at_utc": "2026-09-09T06:19:49.192371+00:00",
+  "step": "report_best_models",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 06:19:49 | INFO     | demand_forecasting.report_best_models | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 06:19:49 | INFO     | demand_forecasting.report_best_models | Best model per family by val_wape:
+ overall_rank family       model  train_wape  val_wape  test_wape
+            1     dl transformer         NaN  0.265420   0.274709
+            2     ml    catboost    0.266382  0.271929   0.268329
+            3  darts        tide         NaN  0.276222   0.269424
+2026-09-09 06:19:51 | INFO     | demand_forecasting.report_best_models | Pooled vs macro test WAPE:
+      model  series_count  pooled_test_wape  macro_test_wape  worst_series_wape  best_series_wape
+   catboost          1004          0.268329         0.272333           0.557385          0.125186
+       tide          1004          0.269424         0.275533           0.671720          0.126087
+transformer          1004          0.274709         0.283536           0.686689          0.114378
+2026-09-09 06:19:51 | INFO     | demand_forecasting.report_best_models | Per-horizon test WAPE:
+      model  horizon_day    n     wape     mape
+   catboost            1 1004 0.264265 0.496416
+   catboost            2 1004 0.274381 0.615207
+   catboost            3 1004 0.276535 0.551180
+   catboost            4 1004 0.267846 0.606019
+   catboost            5 1004 0.250741 0.402528
+   catboost            6 1004 0.273693 0.707155
+   catboost            7 1004 0.267406 0.508104
+   catboost            8 1004 0.261449 0.414613
+   catboost            9 1004 0.287963 0.545461
+   catboost           10 1004 0.263799 0.567126
+   catboost           11 1004 0.260187 0.464795
+   catboost           12 1004 0.268977 0.483658
+   catboost           13 1004 0.262802 0.580915
+   catboost           14 1004 0.276303 0.453830
+       tide            1 1004 0.268747 0.469956
+       tide            2 1004 0.275422 0.617239
+       tide            3 1004 0.279420 0.539587
+       tide            4 1004 0.268299 0.579843
+       tide            5 1004 0.256074 0.391593
+       tide            6 1004 0.271615 0.705243
+       tide            7 1004 0.270325 0.513950
+       tide            8 1004 0.262844 0.410376
+       tide            9 1004 0.283799 0.554916
+       tide           10 1004 0.263481 0.556648
+       tide           11 1004 0.262492 0.489451
+       tide           12 1004 0.267883 0.468665
+       tide           13 1004 0.261421 0.583725
+       tide           14 1004 0.280193 0.487045
+transformer            1 1004 0.273649 0.547557
+transformer            2 1004 0.282502 0.678851
+transformer            3 1004 0.282051 0.598754
+transformer            4 1004 0.269793 0.641899
+transformer            5 1004 0.258610 0.441324
+transformer            6 1004 0.293676 0.784245
+transformer            7 1004 0.285500 0.583089
+transformer            8 1004 0.266466 0.445641
+transformer            9 1004 0.283409 0.567002
+transformer           10 1004 0.260578 0.609107
+transformer           11 1004 0.267803 0.488091
+transformer           12 1004 0.270474 0.511326
+transformer           13 1004 0.269272 0.622841
+transformer           14 1004 0.278382 0.499915
+2026-09-09 06:19:51 | INFO     | demand_forecasting.report_best_models | Written reports:
+{
+  "all_models": "reports/v2/all_models_metrics.csv",
+  "best_models": "reports/v2/best_models.csv",
+  "per_horizon_metrics": "reports/v2/best_models_per_horizon_metrics.csv",
+  "per_series_metrics": "reports/v2/best_models_per_series_metrics.csv",
+  "pooled_vs_macro": "reports/v2/best_models_pooled_vs_macro.csv",
+  "test_predictions": "reports/v2/best_models_test_predictions.csv"
+}

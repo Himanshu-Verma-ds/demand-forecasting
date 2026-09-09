@@ -1,0 +1,26 @@
+selected_model:
+  name: transformer
+  family: dl
+  artifact_path: artifacts_v2/transformer/model.pt
+  selected_at: '2026-09-09T06:20:02.649606+00:00'
+  selection_metric: validation_wape
+  selection_value: 0.2654202684461504
+  validation_metrics:
+    wape: 0.26542026844615046
+    mape: 0.533587087968122
+    mape_coverage: 0.9965850882185544
+    mae: 16.48288946960484
+    rmse: 25.167309512217482
+    smape: 0.29454603668852164
+    bias: 0.00929087004778293
+  test_metrics:
+    wape: 0.27470886277075995
+    mape: 0.5728066212327395
+    mape_coverage: 0.997367672168469
+    mae: 17.144756802253312
+    rmse: 26.36444892070357
+    smape: 0.29686556524798974
+    bias: 0.07317062288759306
+  notes: Selected using validation performance only. Test metrics are stored for final
+    unbiased reporting and were not used for model selection.
+  model_type: transformer

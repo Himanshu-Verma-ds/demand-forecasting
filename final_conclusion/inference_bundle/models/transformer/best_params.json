@@ -1,0 +1,11 @@
+{
+  "lookback": 70,
+  "learning_rate": 0.0005418282319533242,
+  "dropout": 0.08736874205941257,
+  "batch_size": 128,
+  "transformer_d_model": 256,
+  "transformer_heads": 8,
+  "transformer_layers": 2,
+  "embedding_dim": 8,
+  "weight_decay": 0.0007025166339242157
+}

@@ -14,6 +14,27 @@ from .models.ml import MLBundle
 from .stockout import add_stockout_target
 
 
+def required_history_days(cfg: dict) -> int:
+    """Days of history per series that build_causal_features actually needs.
+
+    Every feature is a bounded lag or rolling window, so history older than the longest window
+    cannot influence a forecast. Rebuilding features over the full multi-year history is therefore
+    pure waste: on the full dataset it means a ~1.07M-row frame per horizon day instead of ~70k.
+    """
+    feature_cfg = cfg["features"]
+
+    windows = [
+        max(feature_cfg["demand_lags"]),
+        max(feature_cfg["demand_roll_windows"]),
+        max(feature_cfg["stockout_lags"]),
+        int(feature_cfg["stock_roll_window"]),
+        28,  # price / discount / promo trailing means are hardcoded to 28 days
+    ]
+
+    # Double the longest window plus one horizon as a safety margin for min_periods.
+    return int(max(windows)) * 2 + int(cfg["data"]["horizon"])
+
+
 def recursive_forecast(bundle: MLBundle, history: pd.DataFrame, future_covariates: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     """Forecast future dates recursively without using future target or unavailable covariate information.
 
@@ -28,6 +49,15 @@ def recursive_forecast(bundle: MLBundle, history: pd.DataFrame, future_covariate
 
     history = history.sort_values([*series_cols, date_col]).copy()
     history = add_stockout_target(history, cfg)
+
+    # Trim to the window the features can actually see. series_age_days is a running counter,
+    # so the rows dropped here are added back as a per-series offset after each feature build.
+    warmup_days = required_history_days(cfg)
+    full_counts = history.groupby(series_cols, sort=False, dropna=False).size()
+    history = history.groupby(series_cols, sort=False, group_keys=False, dropna=False).tail(warmup_days)
+    kept_counts = history.groupby(series_cols, sort=False, dropna=False).size()
+
+    age_offset = (full_counts - kept_counts).rename("series_age_offset").reset_index()
 
     future = future_covariates.sort_values([*series_cols, date_col]).copy()
     future[date_col] = pd.to_datetime(future[date_col])
@@ -79,6 +109,11 @@ def recursive_forecast(bundle: MLBundle, history: pd.DataFrame, future_covariate
 
         if xday.empty:
             raise ValueError(f"No feature rows generated for forecast date {pd.Timestamp(forecast_date).date()}")
+
+        # Restore the true series age that trimming removed.
+        xday = xday.merge(age_offset, on=series_cols, how="left", validate="many_to_one")
+        xday["series_age_days"] = xday["series_age_days"] + xday["series_age_offset"].fillna(0)
+        xday = xday.drop(columns=["series_age_offset"])
 
         predictions = bundle.predict(xday)
         xday["prediction"] = predictions

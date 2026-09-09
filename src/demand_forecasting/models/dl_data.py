@@ -158,7 +158,8 @@ class MultiSeriesWindowDataset(Dataset):
       weight:      [horizon]
     """
 
-    def __init__(self, df: pd.DataFrame, meta: DLMetadata, cfg: dict, require_target: bool = True):
+    def __init__(self, df: pd.DataFrame, meta: DLMetadata, cfg: dict, require_target: bool = True,
+                 max_windows: int | None = None):
         data_cfg = cfg["data"]
 
         self.meta = meta
@@ -213,6 +214,14 @@ class MultiSeriesWindowDataset(Dataset):
                     continue
 
                 self.samples.append((group, end))
+
+        # Consecutive windows overlap in 55 of 56 history days, so the full set is highly
+        # redundant. Subsampling keeps every series represented while making training
+        # tractable; it is applied to training windows only, never to evaluation windows.
+        if max_windows and len(self.samples) > max_windows:
+            rng = np.random.default_rng(int(cfg["project"]["random_seed"]))
+            keep = rng.choice(len(self.samples), size=max_windows, replace=False)
+            self.samples = [self.samples[i] for i in sorted(keep)]
 
     def __len__(self) -> int:
         return len(self.samples)

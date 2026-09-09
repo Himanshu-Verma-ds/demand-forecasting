@@ -1,0 +1,667 @@
+2026-09-09 03:25:24 | INFO     | demand_forecasting.train_dl | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "cuda_available": true,
+  "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "model": "lstm",
+  "package_version": "0.1.0",
+  "params_json": "artifacts_v2/tuning/lstm_best_params.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T03:25:24.118156+00:00",
+  "step": "train_dl",
+  "torch_version": "2.14.0+cu130",
+  "tuned_params": {
+    "batch_size": 128,
+    "dropout": 0.21959818254342153,
+    "embedding_dim": 16,
+    "hidden_size": 128,
+    "learning_rate": 0.004123206532618728,
+    "lookback": 42,
+    "num_layers": 3,
+    "weight_decay": 4.335281794951567e-06
+  },
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 03:25:24 | INFO     | demand_forecasting.train_dl | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 42,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 128,
+    "dropout": 0.21959818254342153,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.004123206532618728,
+    "max_train_windows": 150000,
+    "num_layers": 3,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 4.335281794951567e-06
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 03:25:31 | INFO     | demand_forecasting.train_dl | Model settings:
+{
+  "dl": {
+    "batch_size": 128,
+    "dropout": 0.21959818254342153,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.004123206532618728,
+    "max_train_windows": 150000,
+    "num_layers": 3,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 4.335281794951567e-06
+  },
+  "horizon": 14,
+  "lookback": 42,
+  "mlflow_experiment": "fmcg-demand-forecasting-v2",
+  "mlflow_run_id": "12c116700648433abd34144ee74b4e6f",
+  "model": "lstm",
+  "split": {
+    "test": "2023-12-18..2023-12-31",
+    "train_end": "2023-12-03",
+    "validation": "2023-12-04..2023-12-17"
+  }
+}
+2026-09-09 03:27:14 | INFO     | demand_forecasting.train_dl | Training lstm on cuda device with 150,000 train windows and 1,004 validation windows
+2026-09-09 03:27:14 | INFO     | demand_forecasting.train_dl | Trainable parameters: 732,689
+2026-09-09 03:28:20 | INFO     | demand_forecasting.train_dl | epoch=00 train_weighted_mae_scaled=0.3681 val_weighted_mae_scaled=0.3743
+2026-09-09 03:29:07 | INFO     | demand_forecasting.train_dl | epoch=01 train_weighted_mae_scaled=0.3532 val_weighted_mae_scaled=0.3708
+2026-09-09 03:29:52 | INFO     | demand_forecasting.train_dl | epoch=02 train_weighted_mae_scaled=0.3512 val_weighted_mae_scaled=0.3680
+2026-09-09 03:30:38 | INFO     | demand_forecasting.train_dl | epoch=03 train_weighted_mae_scaled=0.3497 val_weighted_mae_scaled=0.3689
+2026-09-09 03:31:25 | INFO     | demand_forecasting.train_dl | epoch=04 train_weighted_mae_scaled=0.3486 val_weighted_mae_scaled=0.3719
+2026-09-09 03:32:11 | INFO     | demand_forecasting.train_dl | epoch=05 train_weighted_mae_scaled=0.3476 val_weighted_mae_scaled=0.3709
+2026-09-09 03:32:57 | INFO     | demand_forecasting.train_dl | epoch=06 train_weighted_mae_scaled=0.3466 val_weighted_mae_scaled=0.3695
+2026-09-09 03:33:43 | INFO     | demand_forecasting.train_dl | epoch=07 train_weighted_mae_scaled=0.3454 val_weighted_mae_scaled=0.3710
+2026-09-09 03:34:29 | INFO     | demand_forecasting.train_dl | epoch=08 train_weighted_mae_scaled=0.3443 val_weighted_mae_scaled=0.3728
+2026-09-09 03:35:16 | INFO     | demand_forecasting.train_dl | epoch=09 train_weighted_mae_scaled=0.3432 val_weighted_mae_scaled=0.3744
+2026-09-09 03:36:04 | INFO     | demand_forecasting.train_dl | epoch=10 train_weighted_mae_scaled=0.3420 val_weighted_mae_scaled=0.3721
+2026-09-09 03:36:04 | INFO     | demand_forecasting.train_dl | Early stopping at epoch 10; best epoch was 2
+2026-09-09 03:36:05 | INFO     | demand_forecasting.train_dl | Best epoch 2: train_weighted_mae_scaled=0.3512
+2026-09-09 03:36:06 | INFO     | demand_forecasting.train_dl | Validation metrics (model selection):
+{
+  "bias": 0.004296099336338343,
+  "mae": 16.529630953572187,
+  "mape": 0.5340457603717111,
+  "mape_coverage": 0.9965850882185544,
+  "rmse": 25.338544764682,
+  "smape": 0.2924434235931543,
+  "wape": 0.2661729360682359
+}
+2026-09-09 03:36:08 | INFO     | demand_forecasting.train_dl | Refitting on train plus validation for 3 epochs
+2026-09-09 03:38:48 | INFO     | demand_forecasting.train_dl | refit_epoch=00 train_weighted_mae_scaled=0.3721
+2026-09-09 03:39:32 | INFO     | demand_forecasting.train_dl | refit_epoch=01 train_weighted_mae_scaled=0.3532
+2026-09-09 03:40:16 | INFO     | demand_forecasting.train_dl | refit_epoch=02 train_weighted_mae_scaled=0.3513
+2026-09-09 03:40:17 | INFO     | demand_forecasting.train_dl | Test metrics (final reporting only):
+{
+  "bias": -0.011043709991680644,
+  "mae": 16.684658290719742,
+  "mape": 0.5133735463213313,
+  "mape_coverage": 0.997367672168469,
+  "rmse": 25.748967644082036,
+  "smape": 0.29045147217070666,
+  "wape": 0.26733674659998435
+}
+2026-09-09 03:40:31 | INFO     | demand_forecasting.train_dl | Saved artifacts:
+{
+  "best_epoch": 2,
+  "metrics": "artifacts_v2/lstm/metrics.json",
+  "model": "artifacts_v2/lstm/model.pt",
+  "test_predictions": "artifacts_v2/lstm/test_predictions.csv",
+  "validation_predictions": "artifacts_v2/lstm/validation_predictions.csv"
+}
+2026-09-09 03:40:31 | INFO     | demand_forecasting.train_dl | Finished lstm training run 12c116700648433abd34144ee74b4e6f
+2026-09-09 04:39:18 | INFO     | demand_forecasting.train_dl | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "cuda_available": true,
+  "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "model": "transformer",
+  "package_version": "0.1.0",
+  "params_json": "artifacts_v2/tuning/transformer_best_params.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T04:39:18.118806+00:00",
+  "step": "train_dl",
+  "torch_version": "2.14.0+cu130",
+  "tuned_params": {
+    "batch_size": 128,
+    "dropout": 0.08736874205941257,
+    "embedding_dim": 8,
+    "learning_rate": 0.0005418282319533242,
+    "lookback": 70,
+    "transformer_d_model": 256,
+    "transformer_heads": 8,
+    "transformer_layers": 2,
+    "weight_decay": 0.0007025166339242157
+  },
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 04:39:18 | INFO     | demand_forecasting.train_dl | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 70,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 128,
+    "dropout": 0.08736874205941257,
+    "embedding_dim": 8,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.0005418282319533242,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 256,
+    "transformer_heads": 8,
+    "transformer_layers": 2,
+    "weight_decay": 0.0007025166339242157
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 04:39:26 | INFO     | demand_forecasting.train_dl | Model settings:
+{
+  "dl": {
+    "batch_size": 128,
+    "dropout": 0.08736874205941257,
+    "embedding_dim": 8,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.0005418282319533242,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 256,
+    "transformer_heads": 8,
+    "transformer_layers": 2,
+    "weight_decay": 0.0007025166339242157
+  },
+  "horizon": 14,
+  "lookback": 70,
+  "mlflow_experiment": "fmcg-demand-forecasting-v2",
+  "mlflow_run_id": "c6180567665b4c8ea7ca9dce3edbd2fa",
+  "model": "transformer",
+  "split": {
+    "test": "2023-12-18..2023-12-31",
+    "train_end": "2023-12-03",
+    "validation": "2023-12-04..2023-12-17"
+  }
+}
+2026-09-09 04:40:09 | INFO     | demand_forecasting.train_dl | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "cuda_available": true,
+  "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU",
+  "model": "transformer",
+  "package_version": "0.1.0",
+  "params_json": "artifacts_v2/tuning/transformer_best_params.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T04:40:09.362412+00:00",
+  "step": "train_dl",
+  "torch_version": "2.14.0+cu130",
+  "tuned_params": {
+    "batch_size": 128,
+    "dropout": 0.08736874205941257,
+    "embedding_dim": 8,
+    "learning_rate": 0.0005418282319533242,
+    "lookback": 70,
+    "transformer_d_model": 256,
+    "transformer_heads": 8,
+    "transformer_layers": 2,
+    "weight_decay": 0.0007025166339242157
+  },
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 04:40:09 | INFO     | demand_forecasting.train_dl | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 70,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 128,
+    "dropout": 0.08736874205941257,
+    "embedding_dim": 8,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.0005418282319533242,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 256,
+    "transformer_heads": 8,
+    "transformer_layers": 2,
+    "weight_decay": 0.0007025166339242157
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 04:40:18 | INFO     | demand_forecasting.train_dl | Model settings:
+{
+  "dl": {
+    "batch_size": 128,
+    "dropout": 0.08736874205941257,
+    "embedding_dim": 8,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.0005418282319533242,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 256,
+    "transformer_heads": 8,
+    "transformer_layers": 2,
+    "weight_decay": 0.0007025166339242157
+  },
+  "horizon": 14,
+  "lookback": 70,
+  "mlflow_experiment": "fmcg-demand-forecasting-v2",
+  "mlflow_run_id": "81f426ed1bd947788c3ef0d41299fd40",
+  "model": "transformer",
+  "split": {
+    "test": "2023-12-18..2023-12-31",
+    "train_end": "2023-12-03",
+    "validation": "2023-12-04..2023-12-17"
+  }
+}
+2026-09-09 04:41:09 | INFO     | demand_forecasting.train_dl | Training transformer on cuda device with 150,000 train windows and 1,004 validation windows
+2026-09-09 04:41:09 | INFO     | demand_forecasting.train_dl | Trainable parameters: 2,652,873
+2026-09-09 04:42:06 | INFO     | demand_forecasting.train_dl | epoch=00 train_weighted_mae_scaled=0.3773 val_weighted_mae_scaled=0.3753
+2026-09-09 04:42:20 | INFO     | demand_forecasting.train_dl | Training transformer on cuda device with 150,000 train windows and 1,004 validation windows
+2026-09-09 04:42:20 | INFO     | demand_forecasting.train_dl | Trainable parameters: 2,652,873
+2026-09-09 04:42:48 | INFO     | demand_forecasting.train_dl | epoch=01 train_weighted_mae_scaled=0.3560 val_weighted_mae_scaled=0.3752
+2026-09-09 04:44:04 | INFO     | demand_forecasting.train_dl | epoch=00 train_weighted_mae_scaled=0.3773 val_weighted_mae_scaled=0.3753
+2026-09-09 04:44:08 | INFO     | demand_forecasting.train_dl | epoch=02 train_weighted_mae_scaled=0.3543 val_weighted_mae_scaled=0.3698
+2026-09-09 04:45:24 | INFO     | demand_forecasting.train_dl | epoch=01 train_weighted_mae_scaled=0.3560 val_weighted_mae_scaled=0.3752
+2026-09-09 04:45:27 | INFO     | demand_forecasting.train_dl | epoch=03 train_weighted_mae_scaled=0.3534 val_weighted_mae_scaled=0.3707
+2026-09-09 04:46:44 | INFO     | demand_forecasting.train_dl | epoch=02 train_weighted_mae_scaled=0.3543 val_weighted_mae_scaled=0.3698
+2026-09-09 04:46:48 | INFO     | demand_forecasting.train_dl | epoch=04 train_weighted_mae_scaled=0.3526 val_weighted_mae_scaled=0.3717
+2026-09-09 04:48:04 | INFO     | demand_forecasting.train_dl | epoch=03 train_weighted_mae_scaled=0.3534 val_weighted_mae_scaled=0.3707
+2026-09-09 04:48:08 | INFO     | demand_forecasting.train_dl | epoch=05 train_weighted_mae_scaled=0.3521 val_weighted_mae_scaled=0.3755
+2026-09-09 04:49:24 | INFO     | demand_forecasting.train_dl | epoch=04 train_weighted_mae_scaled=0.3526 val_weighted_mae_scaled=0.3717
+2026-09-09 04:49:27 | INFO     | demand_forecasting.train_dl | epoch=06 train_weighted_mae_scaled=0.3516 val_weighted_mae_scaled=0.3754
+2026-09-09 04:50:44 | INFO     | demand_forecasting.train_dl | epoch=05 train_weighted_mae_scaled=0.3521 val_weighted_mae_scaled=0.3755
+2026-09-09 04:50:47 | INFO     | demand_forecasting.train_dl | epoch=07 train_weighted_mae_scaled=0.3511 val_weighted_mae_scaled=0.3691
+2026-09-09 04:52:04 | INFO     | demand_forecasting.train_dl | epoch=06 train_weighted_mae_scaled=0.3516 val_weighted_mae_scaled=0.3754
+2026-09-09 04:52:06 | INFO     | demand_forecasting.train_dl | epoch=08 train_weighted_mae_scaled=0.3505 val_weighted_mae_scaled=0.3687
+2026-09-09 04:53:25 | INFO     | demand_forecasting.train_dl | epoch=07 train_weighted_mae_scaled=0.3511 val_weighted_mae_scaled=0.3691
+2026-09-09 04:53:26 | INFO     | demand_forecasting.train_dl | epoch=09 train_weighted_mae_scaled=0.3500 val_weighted_mae_scaled=0.3698
+2026-09-09 04:54:47 | INFO     | demand_forecasting.train_dl | epoch=08 train_weighted_mae_scaled=0.3505 val_weighted_mae_scaled=0.3687
+2026-09-09 04:54:47 | INFO     | demand_forecasting.train_dl | epoch=10 train_weighted_mae_scaled=0.3496 val_weighted_mae_scaled=0.3670
+2026-09-09 04:56:08 | INFO     | demand_forecasting.train_dl | epoch=09 train_weighted_mae_scaled=0.3500 val_weighted_mae_scaled=0.3698
+2026-09-09 04:56:09 | INFO     | demand_forecasting.train_dl | epoch=11 train_weighted_mae_scaled=0.3490 val_weighted_mae_scaled=0.3713
+2026-09-09 04:57:30 | INFO     | demand_forecasting.train_dl | epoch=12 train_weighted_mae_scaled=0.3485 val_weighted_mae_scaled=0.3683
+2026-09-09 04:57:31 | INFO     | demand_forecasting.train_dl | epoch=10 train_weighted_mae_scaled=0.3496 val_weighted_mae_scaled=0.3670
+2026-09-09 04:58:50 | INFO     | demand_forecasting.train_dl | epoch=13 train_weighted_mae_scaled=0.3478 val_weighted_mae_scaled=0.3711
+2026-09-09 04:58:52 | INFO     | demand_forecasting.train_dl | epoch=11 train_weighted_mae_scaled=0.3490 val_weighted_mae_scaled=0.3713
+2026-09-09 05:00:12 | INFO     | demand_forecasting.train_dl | epoch=12 train_weighted_mae_scaled=0.3485 val_weighted_mae_scaled=0.3683
+2026-09-09 05:00:14 | INFO     | demand_forecasting.train_dl | epoch=14 train_weighted_mae_scaled=0.3472 val_weighted_mae_scaled=0.3708
+2026-09-09 05:01:33 | INFO     | demand_forecasting.train_dl | epoch=13 train_weighted_mae_scaled=0.3478 val_weighted_mae_scaled=0.3711
+2026-09-09 05:01:35 | INFO     | demand_forecasting.train_dl | epoch=15 train_weighted_mae_scaled=0.3466 val_weighted_mae_scaled=0.3703
+2026-09-09 05:02:54 | INFO     | demand_forecasting.train_dl | epoch=14 train_weighted_mae_scaled=0.3472 val_weighted_mae_scaled=0.3708
+2026-09-09 05:02:55 | INFO     | demand_forecasting.train_dl | epoch=16 train_weighted_mae_scaled=0.3458 val_weighted_mae_scaled=0.3700
+2026-09-09 05:04:16 | INFO     | demand_forecasting.train_dl | epoch=15 train_weighted_mae_scaled=0.3466 val_weighted_mae_scaled=0.3703
+2026-09-09 05:04:17 | INFO     | demand_forecasting.train_dl | epoch=17 train_weighted_mae_scaled=0.3451 val_weighted_mae_scaled=0.3694
+2026-09-09 05:05:36 | INFO     | demand_forecasting.train_dl | epoch=16 train_weighted_mae_scaled=0.3458 val_weighted_mae_scaled=0.3700
+2026-09-09 05:05:37 | INFO     | demand_forecasting.train_dl | epoch=18 train_weighted_mae_scaled=0.3444 val_weighted_mae_scaled=0.3716
+2026-09-09 05:05:37 | INFO     | demand_forecasting.train_dl | Early stopping at epoch 18; best epoch was 10
+2026-09-09 05:05:38 | INFO     | demand_forecasting.train_dl | Best epoch 10: train_weighted_mae_scaled=0.3496
+2026-09-09 05:05:38 | INFO     | demand_forecasting.train_dl | Validation metrics (model selection):
+{
+  "bias": 0.00929087004778293,
+  "mae": 16.48288946960484,
+  "mape": 0.533587087968122,
+  "mape_coverage": 0.9965850882185544,
+  "rmse": 25.167309512217482,
+  "smape": 0.29454603668852164,
+  "wape": 0.26542026844615046
+}
+2026-09-09 05:05:41 | INFO     | demand_forecasting.train_dl | Refitting on train plus validation for 11 epochs
+2026-09-09 05:06:17 | INFO     | demand_forecasting.train_dl | epoch=17 train_weighted_mae_scaled=0.3451 val_weighted_mae_scaled=0.3694
+2026-09-09 05:06:58 | INFO     | demand_forecasting.train_dl | epoch=18 train_weighted_mae_scaled=0.3444 val_weighted_mae_scaled=0.3716
+2026-09-09 05:06:58 | INFO     | demand_forecasting.train_dl | Early stopping at epoch 18; best epoch was 10
+2026-09-09 05:07:00 | INFO     | demand_forecasting.train_dl | Best epoch 10: train_weighted_mae_scaled=0.3496
+2026-09-09 05:07:01 | INFO     | demand_forecasting.train_dl | Validation metrics (model selection):
+{
+  "bias": 0.00929087004778293,
+  "mae": 16.48288946960484,
+  "mape": 0.533587087968122,
+  "mape_coverage": 0.9965850882185544,
+  "rmse": 25.167309512217482,
+  "smape": 0.29454603668852164,
+  "wape": 0.26542026844615046
+}
+2026-09-09 05:07:04 | INFO     | demand_forecasting.train_dl | Refitting on train plus validation for 11 epochs
+2026-09-09 05:08:34 | INFO     | demand_forecasting.train_dl | refit_epoch=00 train_weighted_mae_scaled=0.3768
+2026-09-09 05:09:16 | INFO     | demand_forecasting.train_dl | refit_epoch=01 train_weighted_mae_scaled=0.3554
+2026-09-09 05:10:37 | INFO     | demand_forecasting.train_dl | refit_epoch=02 train_weighted_mae_scaled=0.3536
+2026-09-09 05:10:37 | INFO     | demand_forecasting.train_dl | refit_epoch=00 train_weighted_mae_scaled=0.3768
+2026-09-09 05:11:58 | INFO     | demand_forecasting.train_dl | refit_epoch=03 train_weighted_mae_scaled=0.3527
+2026-09-09 05:11:58 | INFO     | demand_forecasting.train_dl | refit_epoch=01 train_weighted_mae_scaled=0.3554
+2026-09-09 05:13:22 | INFO     | demand_forecasting.train_dl | refit_epoch=04 train_weighted_mae_scaled=0.3522
+2026-09-09 05:13:22 | INFO     | demand_forecasting.train_dl | refit_epoch=02 train_weighted_mae_scaled=0.3536
+2026-09-09 05:14:43 | INFO     | demand_forecasting.train_dl | refit_epoch=03 train_weighted_mae_scaled=0.3527
+2026-09-09 05:14:43 | INFO     | demand_forecasting.train_dl | refit_epoch=05 train_weighted_mae_scaled=0.3516
+2026-09-09 05:16:06 | INFO     | demand_forecasting.train_dl | refit_epoch=06 train_weighted_mae_scaled=0.3509
+2026-09-09 05:16:07 | INFO     | demand_forecasting.train_dl | refit_epoch=04 train_weighted_mae_scaled=0.3522
+2026-09-09 05:17:26 | INFO     | demand_forecasting.train_dl | refit_epoch=07 train_weighted_mae_scaled=0.3503
+2026-09-09 05:17:26 | INFO     | demand_forecasting.train_dl | refit_epoch=05 train_weighted_mae_scaled=0.3516
+2026-09-09 05:18:49 | INFO     | demand_forecasting.train_dl | refit_epoch=08 train_weighted_mae_scaled=0.3499
+2026-09-09 05:18:49 | INFO     | demand_forecasting.train_dl | refit_epoch=06 train_weighted_mae_scaled=0.3509
+2026-09-09 05:20:09 | INFO     | demand_forecasting.train_dl | refit_epoch=09 train_weighted_mae_scaled=0.3494
+2026-09-09 05:20:09 | INFO     | demand_forecasting.train_dl | refit_epoch=07 train_weighted_mae_scaled=0.3503
+2026-09-09 05:21:30 | INFO     | demand_forecasting.train_dl | refit_epoch=10 train_weighted_mae_scaled=0.3489
+2026-09-09 05:21:31 | INFO     | demand_forecasting.train_dl | refit_epoch=08 train_weighted_mae_scaled=0.3499
+2026-09-09 05:21:31 | INFO     | demand_forecasting.train_dl | Test metrics (final reporting only):
+{
+  "bias": 0.07317062288759306,
+  "mae": 17.144756802253312,
+  "mape": 0.5728066212327395,
+  "mape_coverage": 0.997367672168469,
+  "rmse": 26.36444892070357,
+  "smape": 0.29686556524798974,
+  "wape": 0.27470886277075995
+}
+2026-09-09 05:21:44 | INFO     | demand_forecasting.train_dl | Saved artifacts:
+{
+  "best_epoch": 10,
+  "metrics": "artifacts_v2/transformer/metrics.json",
+  "model": "artifacts_v2/transformer/model.pt",
+  "test_predictions": "artifacts_v2/transformer/test_predictions.csv",
+  "validation_predictions": "artifacts_v2/transformer/validation_predictions.csv"
+}
+2026-09-09 05:21:44 | INFO     | demand_forecasting.train_dl | Finished transformer training run c6180567665b4c8ea7ca9dce3edbd2fa
+2026-09-09 05:22:15 | INFO     | demand_forecasting.train_dl | refit_epoch=09 train_weighted_mae_scaled=0.3494
+2026-09-09 05:22:56 | INFO     | demand_forecasting.train_dl | refit_epoch=10 train_weighted_mae_scaled=0.3489
+2026-09-09 05:22:58 | INFO     | demand_forecasting.train_dl | Test metrics (final reporting only):
+{
+  "bias": 0.07317062288759306,
+  "mae": 17.144756802253312,
+  "mape": 0.5728066212327395,
+  "mape_coverage": 0.997367672168469,
+  "rmse": 26.36444892070357,
+  "smape": 0.29686556524798974,
+  "wape": 0.27470886277075995
+}
+2026-09-09 05:23:10 | INFO     | demand_forecasting.train_dl | Saved artifacts:
+{
+  "best_epoch": 10,
+  "metrics": "artifacts_v2/transformer/metrics.json",
+  "model": "artifacts_v2/transformer/model.pt",
+  "test_predictions": "artifacts_v2/transformer/test_predictions.csv",
+  "validation_predictions": "artifacts_v2/transformer/validation_predictions.csv"
+}
+2026-09-09 05:23:10 | INFO     | demand_forecasting.train_dl | Finished transformer training run 81f426ed1bd947788c3ef0d41299fd40

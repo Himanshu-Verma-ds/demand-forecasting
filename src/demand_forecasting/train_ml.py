@@ -158,6 +158,8 @@ def main():
     configure_mlflow(cfg["training"]["mlflow_experiment"])
 
     with mlflow.start_run(run_name=f"{args.model}-final") as run:
+        mlflow.set_tags({"stage": "final", "model": args.model, "family": "ml"})
+
         effective_params = params or default_params(args.model)
 
         log_settings(logger, "Model hyperparameters", {
@@ -234,7 +236,11 @@ def main():
         mlflow.log_artifact(str(test_path), artifact_path="predictions")
         mlflow.log_artifact(str(metrics_path), artifact_path="metrics")
 
-        log_json_artifact({"validation": val_report, "test": test_report}, f"{args.model}_evaluation.json")
+        log_json_artifact(
+            {"validation": val_report, "test": test_report},
+            f"{args.model}_evaluation.json",
+            save_dir=cfg["training"]["save_dir"],
+        )
 
         log_settings(logger, "Saved artifacts", {
             "model": str(model_path),

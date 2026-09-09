@@ -1,0 +1,132 @@
+2026-09-09 06:19:40 | INFO     | demand_forecasting.evaluate_compare | Run context:
+{
+  "artifacts_dir": "artifacts_v2",
+  "config_path": "configs/config_v2.yaml",
+  "output": "reports/v2_model_comparison.csv",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "selection_metric": "wape",
+  "started_at_utc": "2026-09-09T06:19:40.390642+00:00",
+  "step": "evaluate_compare",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 06:19:40 | INFO     | demand_forecasting.evaluate_compare | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 06:19:40 | INFO     | demand_forecasting.evaluate_compare | Model comparison (ranked by validation WAPE):
+ selection_rank selection_metric       model  train_wape  train_mape  val_wape  val_mape  val_mape_coverage   val_mae  val_rmse  val_smape  val_bias  val_underforecast_margin_risk  val_overforecast_purchase_cost  test_wape  test_mape  test_mae  test_rmse  test_smape  test_bias  test_underforecast_margin_risk  test_overforecast_purchase_cost                          metrics_path
+              1             wape transformer         NaN         NaN  0.265420  0.533587           0.996585 16.482889 25.167310   0.294546  0.009291                  340463.787661                   534709.108804   0.274709   0.572807 17.144757  26.364449    0.296866   0.073171                   266152.607174                    674925.124732 artifacts_v2/transformer/metrics.json
+              2             wape        lstm         NaN         NaN  0.266173  0.534046           0.996585 16.529631 25.338545   0.292443  0.004296                  330204.870139                   549145.753196   0.267337   0.513374 16.684658  25.748968    0.290451  -0.011044                   359071.724383                    504873.626062        artifacts_v2/lstm/metrics.json
+              3             wape    catboost    0.266382    0.560841  0.271929  0.546116           0.996585 16.887058 25.940256   0.294594  0.001417                  339407.303659                   554190.198669   0.268329   0.528338 16.746600  25.692076    0.291316   0.009930                   335747.715670                    547066.701201    artifacts_v2/catboost/metrics.json
+              4             wape     xgboost    0.258421    0.545648  0.272134  0.535798           0.996585 16.899817 25.915125   0.295433 -0.014524                  362455.729065                   520789.357497   0.271357   0.519940 16.935537  26.166589    0.293718  -0.012729                   365537.948984                    510723.519760     artifacts_v2/xgboost/metrics.json
+              5             wape    lightgbm    0.263669    0.557214  0.272172  0.544658           0.996585 16.902186 25.941972   0.294376  0.000606                  341512.140998                   550870.697971   0.270395   0.530404 16.875500  25.982187    0.292324   0.008615                   340226.186251                    548178.204989    artifacts_v2/lightgbm/metrics.json
+              6             wape        tide         NaN         NaN  0.276222  0.553453           0.996585 17.153659 26.367743   0.300329  0.032865                  312340.861343                   624924.349682   0.269424   0.526284 16.814946  25.848674    0.294035  -0.000022                   350080.017741                    529008.866936        artifacts_v2/tide/metrics.json
+2026-09-09 06:19:40 | INFO     | demand_forecasting.evaluate_compare | Wrote comparison table to reports/v2_model_comparison.csv
+2026-09-09 06:19:40 | INFO     | demand_forecasting.evaluate_compare | Validation-selected champion: transformer (val_wape=0.265420)

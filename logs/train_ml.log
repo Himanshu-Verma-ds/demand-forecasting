@@ -1,0 +1,557 @@
+2026-09-09 03:03:46 | INFO     | demand_forecasting.train_ml | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "model": "lightgbm",
+  "package_version": "0.1.0",
+  "params_json": "artifacts_v2/tuning/lightgbm_best_params.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T03:03:46.769290+00:00",
+  "step": "train_ml",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 03:03:46 | INFO     | demand_forecasting.train_ml | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 03:03:51 | INFO     | demand_forecasting.train_ml | Loaded 1,100,000 raw rows from data/raw/data.csv
+2026-09-09 03:03:54 | INFO     | demand_forecasting.train_ml | Model hyperparameters:
+{
+  "mlflow_experiment": "fmcg-demand-forecasting-v2",
+  "mlflow_run_id": "e37112b147c54425812c2722f2cda594",
+  "model": "lightgbm",
+  "params": {
+    "colsample_bytree": 0.7371131029562072,
+    "learning_rate": 0.0119632088278674,
+    "max_depth": 9,
+    "min_child_samples": 56,
+    "n_estimators": 834,
+    "num_leaves": 158,
+    "reg_lambda": 1.2640381745959015,
+    "subsample": 0.7234819759927084
+  },
+  "source": "tuned_json"
+}
+2026-09-09 03:04:01 | INFO     | demand_forecasting.train_ml | Fitting lightgbm on 1,043,748 training rows with 52 features (43 numeric, 9 categorical)
+2026-09-09 03:05:00 | INFO     | demand_forecasting.train_ml | Running recursive validation forecast for 2023-12-04..2023-12-17
+2026-09-09 03:05:22 | INFO     | demand_forecasting.train_ml | Refitting lightgbm on 1,057,804 rows through 2023-12-17
+2026-09-09 03:06:00 | INFO     | demand_forecasting.train_ml | Running recursive test forecast for 2023-12-18..2023-12-31
+2026-09-09 03:06:21 | INFO     | demand_forecasting.train_ml | Temporal split:
+{
+  "test": "2023-12-18..2023-12-31",
+  "train_end": "2023-12-03",
+  "validation": "2023-12-04..2023-12-17"
+}
+2026-09-09 03:06:21 | INFO     | demand_forecasting.train_ml | Train metrics (in-sample fit):
+{
+  "bias": 0.007435583470907122,
+  "mae": 15.594654314239158,
+  "mape": 0.5572141369361842,
+  "mape_coverage": 0.9972100545342363,
+  "rmse": 23.787680671412392,
+  "smape": 0.28701128847404817,
+  "wape": 0.26366881939370485
+}
+2026-09-09 03:06:21 | INFO     | demand_forecasting.train_ml | Validation metrics (model selection):
+{
+  "bias": 0.0006061071714169997,
+  "mae": 16.902185617887675,
+  "mape": 0.5446580033086499,
+  "mape_coverage": 0.9965850882185544,
+  "rmse": 25.941971605093553,
+  "smape": 0.2943763826630374,
+  "wape": 0.2721721001829882
+}
+2026-09-09 03:06:21 | INFO     | demand_forecasting.train_ml | Test metrics (final reporting only):
+{
+  "bias": 0.008614810537323846,
+  "mae": 16.8754998699061,
+  "mape": 0.5304037085766289,
+  "mape_coverage": 0.997367672168469,
+  "rmse": 25.982186629535736,
+  "smape": 0.29232352727657124,
+  "wape": 0.27039458368640895
+}
+2026-09-09 03:06:58 | INFO     | demand_forecasting.train_ml | Saved artifacts:
+{
+  "metrics": "artifacts_v2/lightgbm/metrics.json",
+  "model": "artifacts_v2/lightgbm/model.joblib",
+  "test_predictions": "artifacts_v2/lightgbm/test_predictions.csv",
+  "validation_predictions": "artifacts_v2/lightgbm/validation_predictions.csv"
+}
+2026-09-09 03:06:58 | INFO     | demand_forecasting.train_ml | Finished lightgbm training run e37112b147c54425812c2722f2cda594
+2026-09-09 03:07:14 | INFO     | demand_forecasting.train_ml | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "model": "xgboost",
+  "package_version": "0.1.0",
+  "params_json": "artifacts_v2/tuning/xgboost_best_params.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T03:07:14.402786+00:00",
+  "step": "train_ml",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 03:07:14 | INFO     | demand_forecasting.train_ml | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 03:07:17 | INFO     | demand_forecasting.train_ml | Loaded 1,100,000 raw rows from data/raw/data.csv
+2026-09-09 03:07:20 | INFO     | demand_forecasting.train_ml | Model hyperparameters:
+{
+  "mlflow_experiment": "fmcg-demand-forecasting-v2",
+  "mlflow_run_id": "8efb226821904b339aefec9160ee057d",
+  "model": "xgboost",
+  "params": {
+    "colsample_bytree": 0.707480002036797,
+    "learning_rate": 0.013963373939334655,
+    "max_depth": 8,
+    "min_child_weight": 5.918880885083987,
+    "n_estimators": 1094,
+    "reg_lambda": 1.755590690148228,
+    "subsample": 0.9900916059704233
+  },
+  "source": "tuned_json"
+}
+2026-09-09 03:07:25 | INFO     | demand_forecasting.train_ml | Fitting xgboost on 1,043,748 training rows with 52 features (43 numeric, 9 categorical)
+2026-09-09 03:08:08 | INFO     | demand_forecasting.train_ml | Running recursive validation forecast for 2023-12-04..2023-12-17
+2026-09-09 03:08:31 | INFO     | demand_forecasting.train_ml | Refitting xgboost on 1,057,804 rows through 2023-12-17
+2026-09-09 03:09:08 | INFO     | demand_forecasting.train_ml | Running recursive test forecast for 2023-12-18..2023-12-31
+2026-09-09 03:09:30 | INFO     | demand_forecasting.train_ml | Temporal split:
+{
+  "test": "2023-12-18..2023-12-31",
+  "train_end": "2023-12-03",
+  "validation": "2023-12-04..2023-12-17"
+}
+2026-09-09 03:09:30 | INFO     | demand_forecasting.train_ml | Train metrics (in-sample fit):
+{
+  "bias": 2.712140970327625e-06,
+  "mae": 15.284254951434875,
+  "mape": 0.5456477382388322,
+  "mape_coverage": 0.9972100545342363,
+  "rmse": 22.774800218570757,
+  "smape": 0.2861731815432976,
+  "wape": 0.25842069834645376
+}
+2026-09-09 03:09:30 | INFO     | demand_forecasting.train_ml | Validation metrics (model selection):
+{
+  "bias": -0.014523506219177999,
+  "mae": 16.899816583623654,
+  "mape": 0.5357975182661051,
+  "mape_coverage": 0.9965850882185544,
+  "rmse": 25.915125470715118,
+  "smape": 0.29543294896099065,
+  "wape": 0.2721339521561223
+}
+2026-09-09 03:09:30 | INFO     | demand_forecasting.train_ml | Test metrics (final reporting only):
+{
+  "bias": -0.012728832196374204,
+  "mae": 16.935536926927117,
+  "mape": 0.5199402149329215,
+  "mape_coverage": 0.997367672168469,
+  "rmse": 26.16658899943651,
+  "smape": 0.2937176823700049,
+  "wape": 0.2713565519341113
+}
+2026-09-09 03:09:59 | INFO     | demand_forecasting.train_ml | Saved artifacts:
+{
+  "metrics": "artifacts_v2/xgboost/metrics.json",
+  "model": "artifacts_v2/xgboost/model.joblib",
+  "test_predictions": "artifacts_v2/xgboost/test_predictions.csv",
+  "validation_predictions": "artifacts_v2/xgboost/validation_predictions.csv"
+}
+2026-09-09 03:09:59 | INFO     | demand_forecasting.train_ml | Finished xgboost training run 8efb226821904b339aefec9160ee057d
+2026-09-09 03:10:13 | INFO     | demand_forecasting.train_ml | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "model": "catboost",
+  "package_version": "0.1.0",
+  "params_json": "artifacts_v2/tuning/catboost_best_params.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T03:10:13.942244+00:00",
+  "step": "train_ml",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 03:10:13 | INFO     | demand_forecasting.train_ml | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 03:10:16 | INFO     | demand_forecasting.train_ml | Loaded 1,100,000 raw rows from data/raw/data.csv
+2026-09-09 03:10:20 | INFO     | demand_forecasting.train_ml | Model hyperparameters:
+{
+  "mlflow_experiment": "fmcg-demand-forecasting-v2",
+  "mlflow_run_id": "ecf488259fdb4bb8a534b1c591d9e1a7",
+  "model": "catboost",
+  "params": {
+    "depth": 8,
+    "iterations": 1007,
+    "l2_leaf_reg": 5.898602410432693,
+    "learning_rate": 0.017172542103877867,
+    "random_strength": 0.09290082543999545
+  },
+  "source": "tuned_json"
+}
+2026-09-09 03:10:25 | INFO     | demand_forecasting.train_ml | Fitting catboost on 1,043,748 training rows with 52 features (43 numeric, 9 categorical)
+2026-09-09 03:11:59 | INFO     | demand_forecasting.train_ml | Running recursive validation forecast for 2023-12-04..2023-12-17
+2026-09-09 03:12:22 | INFO     | demand_forecasting.train_ml | Refitting catboost on 1,057,804 rows through 2023-12-17
+2026-09-09 03:13:56 | INFO     | demand_forecasting.train_ml | Running recursive test forecast for 2023-12-18..2023-12-31
+2026-09-09 03:14:16 | INFO     | demand_forecasting.train_ml | Temporal split:
+{
+  "test": "2023-12-18..2023-12-31",
+  "train_end": "2023-12-03",
+  "validation": "2023-12-04..2023-12-17"
+}
+2026-09-09 03:14:16 | INFO     | demand_forecasting.train_ml | Train metrics (in-sample fit):
+{
+  "bias": 0.007787391977202822,
+  "mae": 15.755149367991846,
+  "mape": 0.5608413882849559,
+  "mape_coverage": 0.9972100545342363,
+  "rmse": 23.974153091727505,
+  "smape": 0.2895465776937084,
+  "wape": 0.26638241217292163
+}
+2026-09-09 03:14:16 | INFO     | demand_forecasting.train_ml | Validation metrics (model selection):
+{
+  "bias": 0.0014165760446802613,
+  "mae": 16.887058106589237,
+  "mape": 0.5461160248024421,
+  "mape_coverage": 0.9965850882185544,
+  "rmse": 25.94025577771981,
+  "smape": 0.29459353736800664,
+  "wape": 0.2719285052649274
+}
+2026-09-09 03:14:16 | INFO     | demand_forecasting.train_ml | Test metrics (final reporting only):
+{
+  "bias": 0.009929522212353064,
+  "mae": 16.746600130125827,
+  "mape": 0.5283379446323823,
+  "mape_coverage": 0.997367672168469,
+  "rmse": 25.692076087181732,
+  "smape": 0.29131605805241273,
+  "wape": 0.2683292350008078
+}
+2026-09-09 03:14:41 | INFO     | demand_forecasting.train_ml | Saved artifacts:
+{
+  "metrics": "artifacts_v2/catboost/metrics.json",
+  "model": "artifacts_v2/catboost/model.joblib",
+  "test_predictions": "artifacts_v2/catboost/test_predictions.csv",
+  "validation_predictions": "artifacts_v2/catboost/validation_predictions.csv"
+}
+2026-09-09 03:14:41 | INFO     | demand_forecasting.train_ml | Finished catboost training run ecf488259fdb4bb8a534b1c591d9e1a7

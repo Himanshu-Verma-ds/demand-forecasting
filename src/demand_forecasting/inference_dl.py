@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -61,7 +62,13 @@ def load_checkpoint(path: str, device: torch.device):
 
 
 def validate_checkpoint(meta: DLMetadata, checkpoint: dict, cfg: dict) -> None:
-    """Ensure inference config matches the feature schema used during training."""
+    """Ensure inference config matches the feature schema used during training.
+
+    The feature contract must match exactly - a mismatch means the model would be fed
+    different inputs than it was trained on. Lookback is deliberately not checked here:
+    it is tuned per model, so the checkpoint is authoritative and the caller adopts it.
+    Horizon is a business requirement, so that must still agree with config.
+    """
     expected_past, expected_future, expected_static = get_dl_feature_columns(cfg)
 
     if meta.past_cols != expected_past:
@@ -72,9 +79,6 @@ def validate_checkpoint(meta: DLMetadata, checkpoint: dict, cfg: dict) -> None:
 
     if meta.static_cols != expected_static:
         raise ValueError("Current config produces different static features from those stored in the checkpoint")
-
-    if int(checkpoint["lookback"]) != int(cfg["data"]["lookback"]):
-        raise ValueError("Config lookback does not match the trained checkpoint")
 
     if int(checkpoint["horizon"]) != int(cfg["data"]["horizon"]):
         raise ValueError("Config horizon does not match the trained checkpoint")
@@ -159,6 +163,14 @@ def forecast(model_path: str, history: pd.DataFrame, future: pd.DataFrame, cfg: 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model, meta, checkpoint = load_checkpoint(model_path, device)
     validate_checkpoint(meta, checkpoint, cfg)
+
+    # Lookback is tuned per model, so the checkpoint wins over whatever config happens to say.
+    checkpoint_lookback = int(checkpoint["lookback"])
+
+    if checkpoint_lookback != lookback:
+        cfg = copy.deepcopy(cfg)
+        cfg["data"]["lookback"] = checkpoint_lookback
+        lookback = checkpoint_lookback
 
     output = future.copy()
     future_model = prepare_future(future, cfg)

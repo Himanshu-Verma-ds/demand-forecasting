@@ -1,0 +1,6 @@
+2026-09-08 14:51:57 | INFO     | demand_forecasting.api | Forecast request received with 1 future covariate rows
+2026-09-08 14:52:01 | WARNING  | demand_forecasting.api | Rejected forecast request: Series ('STORE0001', 'SKU0086') must contain exactly 14 future rows; found 1
+2026-09-08 16:20:05 | INFO     | demand_forecasting.api | Forecast request received with 14 future covariate rows
+2026-09-08 16:20:10 | INFO     | demand_forecasting.api | Returned 14 forecast rows for 1 series
+2026-09-08 18:25:11 | INFO     | demand_forecasting.api | Forecast request received with 28 future covariate rows
+2026-09-08 18:25:13 | INFO     | demand_forecasting.api | Returned 28 forecast rows for 2 series

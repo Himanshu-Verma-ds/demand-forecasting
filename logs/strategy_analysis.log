@@ -1,0 +1,122 @@
+2026-09-08 14:52:07 | INFO     | demand_forecasting.strategy_analysis | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "output": "reports/strategy_analysis.csv",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-08T14:52:07.069411+00:00",
+  "step": "strategy_analysis",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 14:52:07 | INFO     | demand_forecasting.strategy_analysis | Effective configuration:
+{
+  "bayes": {
+    "n_trials": 25,
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 30,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 5,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting",
+    "n_jobs": -1,
+    "save_dir": "artifacts"
+  }
+}
+2026-09-08 14:52:11 | INFO     | demand_forecasting.strategy_analysis | Modelling strategy footprint:
+                      strategy             grouping  n_models_or_series  min_rows  median_rows  max_rows
+              global_store_sku      store_id+sku_id                1005       620       1095.0      1095
+         model_per_subcategory          subcategory                  17     54750      65700.0     71175
+   model_per_sku_shared_stores               sku_id                 102      6570      10950.0     14235
+               local_store_sku      store_id+sku_id                1005       620       1095.0      1095
+middle_level_store_subcategory store_id+subcategory                 220      1095       5475.0      6570
+2026-09-08 14:52:11 | INFO     | demand_forecasting.strategy_analysis | Wrote strategy comparison to reports/strategy_analysis.csv

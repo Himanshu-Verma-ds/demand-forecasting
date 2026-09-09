@@ -13,7 +13,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
-from .config import load_config
+from .config import apply_dl_params, load_config
 from .data import read_raw
 from .features import add_calendar_features
 from .logging_utils import log_metrics, log_run_context, log_settings, setup_logging
@@ -172,7 +172,8 @@ def train_with_validation(kind: str, train_df: pd.DataFrame, val_df: pd.DataFram
     dl_cfg = cfg["dl"]
     meta = fit_metadata(train_df, cfg)
 
-    train_ds = MultiSeriesWindowDataset(train_df, meta, cfg)
+    # Training windows may be subsampled for tractability; validation windows never are.
+    train_ds = MultiSeriesWindowDataset(train_df, meta, cfg, max_windows=dl_cfg.get("max_train_windows"))
     val_ds = MultiSeriesWindowDataset(val_df, meta, cfg)
 
     if len(train_ds) == 0:
@@ -207,6 +208,7 @@ def train_with_validation(kind: str, train_df: pd.DataFrame, val_df: pd.DataFram
     )
 
     best_loss = float("inf")
+    best_train_loss = float("nan")
     best_state = None
     best_epoch = 0
     patience_counter = 0
@@ -222,6 +224,7 @@ def train_with_validation(kind: str, train_df: pd.DataFrame, val_df: pd.DataFram
 
         if val_loss < best_loss - 1e-4:
             best_loss = val_loss
+            best_train_loss = train_loss
             best_epoch = epoch
             patience_counter = 0
             best_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
@@ -237,14 +240,18 @@ def train_with_validation(kind: str, train_df: pd.DataFrame, val_df: pd.DataFram
 
     model.load_state_dict(best_state)
 
-    return model, meta, val_loader, device, best_epoch
+    # Train and validation loss at the selected epoch, so overfitting is visible per run.
+    mlflow.log_metric("train_weighted_mae_scaled", best_train_loss)
+    mlflow.log_metric("val_weighted_mae_scaled", best_loss)
+
+    return model, meta, val_loader, device, best_epoch, best_train_loss
 
 
 def refit_fixed_epochs(kind: str, train_df: pd.DataFrame, cfg: dict, epochs: int):
     """Refit a fresh model on train plus validation using the validation-selected epoch count."""
     dl_cfg = cfg["dl"]
     meta = fit_metadata(train_df, cfg)
-    train_ds = MultiSeriesWindowDataset(train_df, meta, cfg)
+    train_ds = MultiSeriesWindowDataset(train_df, meta, cfg, max_windows=dl_cfg.get("max_train_windows"))
 
     if len(train_ds) == 0:
         raise ValueError("No valid DL refit windows were generated")
@@ -287,9 +294,15 @@ def main():
     ap = argparse.ArgumentParser(description="Train and evaluate global LSTM or Transformer demand forecasting models.")
     ap.add_argument("--model", choices=["lstm", "transformer"], required=True)
     ap.add_argument("--config", default="configs/config.yaml")
+    ap.add_argument("--params-json", default=None, help="Tuned parameters from tune_dl.py")
     args = ap.parse_args()
 
     cfg = load_config(args.config)
+    tuned_params = json.loads(Path(args.params_json).read_text(encoding="utf-8")) if args.params_json else None
+
+    if tuned_params:
+        cfg = apply_dl_params(cfg, tuned_params)
+
     logger = setup_logging("train_dl", cfg)
 
     log_run_context(
@@ -298,6 +311,8 @@ def main():
         cfg,
         config_path=args.config,
         model=args.model,
+        params_json=args.params_json,
+        tuned_params=tuned_params,
         torch_version=torch.__version__,
         cuda_available=torch.cuda.is_available(),
         cuda_device=torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
@@ -328,6 +343,8 @@ def main():
     configure_mlflow(training_cfg["mlflow_experiment"])
 
     with mlflow.start_run(run_name=f"{args.model}-global") as run:
+        mlflow.set_tags({"stage": "final", "model": args.model, "family": "dl"})
+
         log_settings(logger, "Model settings", {
             "model": args.model,
             "dl": cfg["dl"],
@@ -352,7 +369,8 @@ def main():
             "weather_known_future": cfg["features"]["weather_known_future"],
         })
 
-        model, meta, val_loader, device, best_epoch = train_with_validation(args.model, train, val_frame, cfg)
+        model, meta, val_loader, device, best_epoch, best_train_loss = train_with_validation(args.model, train, val_frame, cfg)
+        logger.info("Best epoch %d: train_weighted_mae_scaled=%.4f", best_epoch, best_train_loss)
 
         val_predictions = predict_loader(model, val_loader, device, args.model, meta)
         val_eval = attach_prediction_metadata(val_truth, val_predictions, cfg)

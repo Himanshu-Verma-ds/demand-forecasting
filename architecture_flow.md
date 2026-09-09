@@ -66,27 +66,34 @@ ml_assignment_project/
                         make_temporal_split                 data/processed/
                             splits.py                       features.parquet
                                     │                    (prepare_dataset.py, DVC out)
+        ┌───────────────────────────┴───────────────────────────┐
+        │                                                       │
+        ▼                                                       ▼
+  tune_bayesian.py                                        tune_dl.py
+  (Optuna TPE, trees, n_trials)                (Optuna TPE, LSTM/Transformer/
+        │                                       TiDE/TSMixer; searches lookback)
+        │  artifacts/tuning/<model>_best_params.json + <model>_trials.csv
+        │  one nested MLflow run per trial
+        └───────────────────────────┬───────────────────────────┘
+                                    │  --params-json
         ┌───────────────────────────┼───────────────────────────┐
-        │                           │                           │
         ▼                           ▼                           ▼
-  tune_bayesian.py            train_dl.py                 train_darts.py
-  (Optuna TPE, 25 trials)     (LSTM / Transformer)        (TiDE / TSMixer)
-        │  best_params.json         │                           │
-        ▼                           │                           │
-   train_ml.py                      │                           │
-  (LGBM/XGB/CatBoost)               │                           │
+   train_ml.py                 train_dl.py               train_darts.py
+  (LGBM/XGB/CatBoost)        (LSTM / Transformer)        (TiDE / TSMixer)
         │                           │                           │
         └──────────► artifacts/<model>/{model.*, metrics.json, *_predictions.csv}
                                     │            + MLflow run  + logs/<step>.log
                                     ▼
                           evaluate_compare.py
-                    (ranks every model by validation WAPE)
-                                    │  reports/model_comparison.csv
-                                    ▼
-                            select_model.py
-                    (writes configs/model_registry.yaml)
-                                    │
+              (ranks every model by validation selection_metric)
+                                    │  reports/v1/model_comparison.csv
                     ┌───────────────┴────────────────┐
+                    ▼                                ▼
+          report_best_models.py                select_model.py
+   (best per family + test vs actuals,   (writes configs/model_registry.yaml)
+    per-series / per-horizon metrics)             │
+                                                  │
+                    ┌─────────────────────────────┴──┐
                     ▼                                ▼
           inference_router.py                    drift.py
        (routes to ml / dl / darts)        (PSI, KS, promo regime)
@@ -95,10 +102,14 @@ ml_assignment_project/
         ▼                       ▼
    batch CSV forecast     api.py POST /forecast
    (inference_*.py)       (Docker, port 8000)
-                                    │
-                                    ▼
-                            hierarchy.py
-                (bottom-up aggregation / middle-out allocation)
+        ▲                       ▲
+        └───────────┬───────────┘
+                    │  future_covariates.csv / forecast_request.json
+          make_future_template.py
+                    │
+                    ▼
+            hierarchy.py
+   (bottom-up aggregation / middle-out allocation)
 ```
 
 ---
@@ -119,7 +130,7 @@ behaviour is hard-coded in a training script. Sections:
 | `split` | `validation_days: 14`, `test_days: 14` |
 | `features` | lag/rolling windows, stockout strategy, which covariates are known in the future |
 | `training` | row caps, `n_jobs`, MLflow experiment name, artifact directory |
-| `bayes` | Optuna trial count, timeout, which models to tune |
+| `bayes` | trial counts (`n_trials` trees, `n_trials_dl` sequence), timeout, `objective_metric`, `log_trial_models` |
 | `ml` / `dl` | model families and neural hyperparameters |
 | `hierarchy` | share window and whether stockout days are excluded from shares |
 | `monitoring` | PSI warning/alert thresholds and promo-regime alert threshold |
@@ -363,6 +374,15 @@ PYTHONPATH=src python -m demand_forecasting.tune_bayesian --model lightgbm
 
 Writes `artifacts/tuning/lightgbm_best_params.json` and `artifacts/tuning/lightgbm_trials.csv`.
 `logs/tune_bayesian.log` gets the setup block, one line per trial, and the best-trial summary.
+Every trial is also a nested MLflow run carrying its params and the full validation metric set;
+`bayes.log_trial_models` additionally persists each trial's fitted model.
+
+#### `src/demand_forecasting/tune_dl.py` — **step `tune_dl`**
+The same Optuna TPE treatment for the sequence models — `lstm`, `transformer`, `tide`, `tsmixer` —
+scored on a real 14-day validation forecast and logged as nested MLflow runs. Crucially it searches
+**`lookback` (the input chunk length)**, which was previously a fixed constant. `apply_dl_params()`
+routes `lookback` into `data` and everything else into `dl`, on a deep copy so trials stay isolated.
+`train_dl.py` and `train_darts.py` consume the result via `--params-json`. See Q10 and Q11.
 
 #### `src/demand_forecasting/train_ml.py` — **step `train_ml`**
 The tree-model training and evaluation stage. Sequence:
@@ -397,6 +417,15 @@ per-timestep sample weights. Saves `model.pt` plus a `metadata.joblib` holding t
 column lists, static maps and the feature-contract flags — `inference_darts.py` refuses to run if
 the current config disagrees with that metadata.
 
+It now mirrors `train_ml.py` / `train_dl.py` end to end: `evaluate_window()` forecasts validation
+from the train-end origin, the model is refit on train+validation, the test window is scored once
+from the val-end origin, and the run writes `metrics.json`, both prediction CSVs and a full MLflow
+run. TiDE/TSMixer therefore appear in `reports/v1/model_comparison.csv` and are promotable.
+
+`forecast_from_origin()` is the key helper: target and past covariates stop at the origin, while
+known-future covariates (calendar plus whatever the `*_known_future` flags permit) legitimately
+extend across the horizon.
+
 ---
 
 ### 4.5 Evaluation, comparison and promotion
@@ -405,6 +434,8 @@ the current config disagrees with that metadata.
 | Function | Meaning |
 |---|---|
 | `wape` | `Σ|y−ŷ| / Σ|y|` — the primary decision metric; defined even when rows are zero |
+| `mape` | mean of `|y−ŷ|/|y|` over **non-zero actuals only**; unstable on low-demand rows |
+| `mape_coverage` | fraction of rows MAPE was actually computed on |
 | `smape` | symmetric percentage error, safe denominator |
 | `forecast_bias` | `Σ(ŷ−y) / Σ|y|`; positive = systematic overforecasting |
 | `regression_metrics` | wape, mae, rmse, smape, bias |
@@ -417,8 +448,21 @@ stock and replenishment policy are not modelled.
 
 #### `src/demand_forecasting/evaluate_compare.py` — **step `evaluate_compare`**
 Scans `artifacts/*/metrics.json`, builds one row per model, ranks by validation WAPE and writes
-`reports/model_comparison.csv`. The ranked table and the selected champion are written to
+`reports/v1/model_comparison.csv`. The ranked table and the selected champion are written to
 `logs/evaluate_compare.log`. Test columns are carried for reporting but are never the sort key.
+
+#### `src/demand_forecasting/report_best_models.py` — **step `report_best_models`**
+Picks the lowest `val_<metric>` model **within each family** (ml / dl / darts), then loads that
+model's `test_predictions.csv` and scores it against actuals. Produces the per-series and
+per-horizon breakdowns that `full_evaluation` does not compute, plus a pooled-vs-macro WAPE summary.
+See Q15 for the full output list.
+
+#### `src/demand_forecasting/make_future_template.py` — **step `make_future_template`**
+Generates the known-future covariate rows for the next horizon: finds series active on the final
+history date, builds the 14 contiguous dates that follow, fills deterministic calendar fields, and
+writes both `future_covariates.csv` (batch CLIs) and `forecast_request.json` (the API body). The
+required fields are derived from the `*_known_future` contract, so the request can never drift from
+the model. See Q16.
 
 #### `src/demand_forecasting/select_model.py` — **step `select_model`**
 Promotes a model to `configs/model_registry.yaml`. It re-reads the comparison file and **refuses to
@@ -564,7 +608,8 @@ not just what the chart shows.
 `conftest.py` holds a minimal config fixture. `test_leakage.py` proves that mutating `y_t` does not
 change the features for row `t`, and that changing future targets does not change past features.
 `test_splits.py` pins the exact boundary dates and labels. `test_metrics.py` checks WAPE, bias sign
-and finiteness. 15 tests, all passing.
+and finiteness. `test_hierarchy.py` covers bottom-up coherence, share normalisation and middle-out
+allocation across multi-day horizons. 25 tests, all passing.
 
 ---
 
@@ -579,9 +624,10 @@ and finiteness. 15 tests, all passing.
 | Console | mirrored to stdout when `logging.console: true` |
 | Format | `timestamp \| LEVEL \| demand_forecasting.<step> \| message` |
 
-Steps that produce a log file: `prepare_dataset`, `tune_bayesian`, `train_ml`, `train_dl`,
-`train_darts`, `evaluate_compare`, `select_model`, `drift`, `inference_ml`, `inference_dl`,
-`inference_darts`, `strategy_analysis`, `api`.
+Steps that produce a log file: `prepare_dataset`, `tune_bayesian`, `tune_dl`, `train_ml`,
+`train_dl`, `train_darts`, `evaluate_compare`, `report_best_models`, `select_model`, `drift`,
+`inference_ml`, `inference_dl`, `inference_darts`, `make_future_template`, `strategy_analysis`,
+`api`.
 
 Every one of them records, at minimum: run context (timestamp, Python/platform, package version,
 CWD, CLI arguments), the **entire effective configuration**, the settings actually used
@@ -617,6 +663,27 @@ runs. The overlap (metrics appear in both) is intentional — the log stays read
 10. Inference and the API blank every column the `*_known_future` contract marks unavailable.
 11. `test_leakage.py` asserts (1)-(2) mechanically on every test run.
 
+### Verified empirically
+
+The unit tests only cover the feature builder. The end-to-end forecast paths were additionally
+probed by corrupting information that is unknown at the forecast origin and checking the forecast
+does not move (a bit-identical result means the information cannot have been used):
+
+| Probe | Perturbation | Result |
+|---|---|---|
+| Tree: future labels | `units_sold × 1000 + 12345`, `gross/net_sales × 999` | max Δ = 0.0 |
+| Tree: future inventory | flip `stock_out_flag`, `stock_on_hand → 0` | max Δ = 0.0 |
+| Tree: unknown covariates | `list_price × 5`, `discount 0.9`, `temp −50`, `rain 999` | max Δ = 0.0 |
+| Tree: promo (declared **known**) | flip `promo_flag` | max Δ = 151.3 — correctly *does* move |
+| Tree: recursion | inspect D+2 `demand_lag_1` | equals D+1 **prediction**, not D+1 actual |
+| Tree: blocked columns | inspect the 52 model inputs | none of the blocked names present |
+| DL: future labels + inventory | same corruption | max Δ = 0.0 |
+| DL: promo (declared **known**) | flip `promo_flag` | max Δ = 115.8 — correctly *does* move |
+| Stockout `rolling_median` | build targets from train-only vs full data | 0 / 21,340 training targets change |
+
+The promo probes are the control: they prove the zero-deltas above are genuine leakage blocks and
+not an artefact of the models ignoring their future inputs entirely.
+
 ---
 
 ## 7. Reproducing a run
@@ -627,7 +694,7 @@ dvc repro                                                    # rebuild features 
 python -m demand_forecasting.tune_bayesian --model lightgbm  # → artifacts/tuning/*.json
 python -m demand_forecasting.train_ml --model lightgbm \
   --params-json artifacts/tuning/lightgbm_best_params.json   # → artifacts/lightgbm/*, MLflow run
-python -m demand_forecasting.evaluate_compare                # → reports/model_comparison.csv
+python -m demand_forecasting.evaluate_compare                # → reports/v1/model_comparison.csv
 python -m demand_forecasting.select_model --name lightgbm --family ml \
   --artifact artifacts/lightgbm/model.joblib \
   --metrics artifacts/lightgbm/metrics.json                  # → configs/model_registry.yaml
@@ -635,3 +702,1555 @@ python -m demand_forecasting.select_model --name lightgbm --family ml \
 
 The four things needed to reproduce any result are the DVC data version, the Git commit, the
 `Effective configuration` block in the step's log, and the MLflow run id printed in that same log.
+
+---
+
+## 8. Q&A
+
+A running record of design questions asked about this project and the answers, with the evidence
+behind them. Newest entries are appended at the end.
+
+---
+
+### Q1. Should we use multiple k-fold-style validation blocks instead of a single one?
+
+**Short answer:** not k-fold — that is invalid for this problem. But yes, the single validation
+window should become **multiple rolling origins**. One window is defensible for a v1 and is what is
+implemented today, but it is the weakest part of the current model-selection story.
+
+#### Why literal k-fold is wrong here
+
+Standard k-fold shuffles rows into random folds. For a forecasting problem that is not merely
+suboptimal, it is invalid:
+
+- A fold boundary that cuts through time puts **future rows in training and past rows in
+  validation**. The model learns from 2023-12-10 to predict 2023-06-01.
+- Our features are lags and rolling windows over a series. Neighbouring rows share almost all their
+  information, so a random split leaves near-duplicates of every validation row in training. The
+  score becomes an interpolation score, not a forecasting score.
+- It does not measure the deployed task. Production runs one 14-day-ahead batch forecast from a
+  fixed origin; a random fold measures "fill in a missing day given both its neighbours", which is
+  a much easier and irrelevant problem.
+
+The time-series analogue of k-fold is **rolling-origin (walk-forward) backtesting**: several
+sequential origins, where training always ends strictly before each origin.
+
+```text
+origin 1   train ──────────────┤ val(14d)
+origin 2   train ──────────────────────┤ val(14d)
+origin 3   train ──────────────────────────────┤ val(14d)
+                                                     ... K origins
+                                                              held-out test (untouched)
+```
+
+#### What we do today
+
+Exactly **one** origin: train ends 2023-12-03, validation is 2023-12-04 → 2023-12-17, and that
+single window is both the Optuna objective (`tune_bayesian.py`) and the ranking key in
+`evaluate_compare.py`.
+
+#### Why one window is defensible
+
+- It matches the deployment geometry exactly — one 14-day batch forecast from a fixed origin.
+- The sample is not small: 1,004 active series × 14 days = **14,056 rows**, so *row-level* sampling
+  noise on pooled WAPE is minor.
+- It is cheap. `recursive_forecast` is the dominant cost in tuning (it rebuilds causal features once
+  per horizon day), so each extra origin multiplies tuning time roughly linearly.
+
+#### Why one window is nevertheless not enough
+
+The uncertainty that matters is not row-level noise — it is **origin-to-origin variance**, and a
+single window cannot measure it at all.
+
+1. **Regime concentration.** Both the validation and test windows fall in **late December**. The EDA
+   found demand is elevated Jun–Aug and Oct–Dec, so the entire selection *and* reporting exercise
+   sits inside one high-demand, holiday, promo-heavy fortnight. A model chosen there is not
+   demonstrably the best model for March.
+2. **The model differences are small.** In the audit run the top five models spanned validation WAPE
+   0.256 → 0.274. Gaps that narrow are well within the swing a different origin can produce, so
+   ranking on one window risks promoting the winner of a coin flip.
+3. **No stability signal.** One number gives a point estimate with no spread. With K origins you get
+   a mean *and* a standard deviation, and "consistently second-best" often beats "won once by a
+   nose" for something you have to operate.
+
+#### Recommendation
+
+Keep the final test window fixed and untouched. Replace the single validation origin with K rolling
+origins (6–12, spaced biweekly or monthly so several seasons are represented), and select on the
+**mean validation WAPE across origins**, reporting the spread alongside it.
+
+Because the cost is linear in K, a practical compromise is a two-stage search: tune on 2–3 origins
+(or a row subsample) to narrow the hyperparameter space, then evaluate only the surviving candidates
+on the full set of origins.
+
+Note that no purge/embargo gap is needed between train and origin: every feature is strictly
+backward-looking (`shift(1)` before every rolling window) and `make_temporal_split` already ends
+training the day before the origin, so there is no overlap to purge.
+
+**Status: known gap.** `explanation.md` §3 already flags rolling-origin backtesting as the
+recommended maturity step. It is not implemented — `splits.py` produces a single `TemporalSplit`.
+Adding it means a generator of origins plus a loop in `tune_bayesian.py` and `train_ml.py`.
+
+---
+
+### Q2. How are the metrics computed across so many store-SKU combinations — per series, or averaged?
+
+**Short answer:** everything is computed **once over all rows pooled together** (micro-averaging).
+Metrics are *not* computed per store-SKU and then averaged, and there is currently no per-series
+breakdown at all. Also note **MAPE is not implemented** — deliberately.
+
+#### What the code actually does
+
+`full_evaluation(df, y_col, pred_col)` in `metrics.py` receives one flat dataframe — every
+`(store_id, sku_id, date)` row in the window, i.e. **14,056 rows** for validation (1,004 active
+series × 14 horizon days) — and calls `regression_metrics()` on the whole thing at once:
+
+```python
+overall = regression_metrics(df[y_col], df[pred_col])   # one pooled number per metric
+```
+
+So `metrics.json → validation.overall.wape` is a single global figure covering all series and all
+14 horizon days simultaneously.
+
+| Metric | Formula | How it aggregates |
+|---|---|---|
+| `wape` | `Σ|y−ŷ| / Σ|y|` over all rows | **volume-weighted** — high-volume series dominate |
+| `mae` | mean of `|y−ŷ|` over all rows | equal weight per row, but large-volume rows produce large absolute errors |
+| `rmse` | `sqrt(mean((y−ŷ)²))` over all rows | equal weight per row, extra penalty on big misses |
+| `smape` | mean of the per-row symmetric ratio | **equal weight per row** — behaves differently from WAPE |
+| `bias` | `Σ(ŷ−y) / Σ|y|` over all rows | volume-weighted |
+
+Note that WAPE and SMAPE aggregate differently: WAPE is a ratio of sums (volume-weighted), while
+SMAPE is a mean of ratios (row-weighted). They can disagree, and that disagreement is informative.
+
+#### The consequence, made concrete
+
+Pooled WAPE is volume-weighted, which means it can hide systematic failure on small series. Verified
+numerically with two rows:
+
+| Series | actual | predicted | error | per-series WAPE |
+|---|---|---|---|---|
+| HIGH | 500 | 450 | 50 | 10% |
+| LOW | 10 | 5 | 5 | **50%** |
+
+- **Pooled (what we report):** `55 / 510` = **10.8%**
+- **Per-series, then averaged (macro):** `(10% + 50%) / 2` = **30.0%**
+
+Same predictions, a ~3× difference in the headline number. The pooled figure is the right one for a
+business question ("how many units are we off across the estate?"), because a unit of error on a
+500/day SKU really does cost more than a unit on a 10/day SKU. But it is the wrong one for asking
+"does this model work for *every* SKU?", and low-volume series are exactly where cold-start and
+sparse-demand problems live.
+
+#### What breakdowns exist
+
+`full_evaluation` builds exactly three, hardcoded:
+
+```python
+for group_col in ["channel", "category", "promo_flag"]:
+```
+
+Within each group the same pooling applies. `grouped_metrics()` sorts worst-WAPE-first so problem
+segments surface at the top.
+
+#### Why there is no MAPE
+
+MAPE divides by `y` on every row. This dataset contains low- and zero-demand days, so MAPE would be
+undefined or explode toward infinity on exactly the rows we care most about, and a single near-zero
+actual can dominate the whole average. WAPE is the standard robust replacement: same "percentage
+error" intuition, one shared denominator, always defined as long as total demand is non-zero. SMAPE
+is reported alongside as a bounded row-level view.
+
+#### Gaps worth closing
+
+1. **No per-series metrics.** Nothing reports WAPE per `(store_id, sku_id)`, so a systematically
+   broken series is invisible in the headline number.
+2. **No per-horizon-day metrics.** Error should grow from D+1 to D+14 (especially for the recursive
+   tree path, where predictions feed later lags). We never measure that decay, so we cannot tell a
+   model that is strong at D+1 and collapsing by D+14 from one that is uniformly mediocre.
+3. **No macro WAPE.** Reporting pooled *and* per-series-averaged WAPE side by side would immediately
+   expose the small-series problem shown above.
+
+`explanation.md` §8 lists horizon day, store, subcategory and volume decile as breakdowns that
+*should* be inspected; none of them are implemented. The per-row prediction CSVs
+(`artifacts/<model>/validation_predictions.csv`, `test_predictions.csv`) are saved, so all of these
+can be computed after the fact without retraining — the data is there, only the reporting is
+missing.
+
+> **Update.** MAPE has since been implemented (`metrics.mape`, with `mape_coverage` reporting the
+> fraction of rows scored) and is logged for train/validation/test alongside the other metrics.
+> Selection is configurable via `training.selection_metric` / `--metric`. See Q3 for why WAPE
+> remains the recommended default.
+
+---
+
+### Q3. Which metric should actually drive model selection — and does it matter?
+
+**It matters: the metric changes which model gets promoted.** Measured on a 12-series subset with
+the full pipeline:
+
+| model | val_wape | val_mape | test_wape | test_mape |
+|---|---|---|---|---|
+| lstm | 0.2552 | **0.3151** | 0.3024 | 0.8697 |
+| lightgbm | **0.2511** | 0.3336 | 0.2821 | 0.9060 |
+| xgboost | 0.2737 | 0.3513 | 0.3121 | 0.8865 |
+| tide | 0.3742 | 0.4576 | 0.3781 | 1.0791 |
+
+Ranking on WAPE promotes **lightgbm**; ranking on MAPE promotes **lstm**. Same runs, same
+predictions, different champion.
+
+Two things to notice in that table:
+
+1. **MAPE is far less stable across windows.** It nearly triples from validation (~0.32) to test
+   (~0.87–1.08), while WAPE moves modestly (~0.25 → ~0.28). A metric that swings that much between
+   two adjacent 14-day windows is a poor basis for a promotion decision.
+2. **The instability is structural, not noise.** MAPE divides by each actual. On this dataset 0.28%
+   of rows have zero demand (excluded from MAPE entirely — `mape_coverage` reports how many) and
+   ~1.5% have demand below 5 units, where a 2-unit miss reads as a 40–200% error. A handful of
+   small-demand rows can dominate the average.
+
+WAPE (`Σ|y−ŷ| / Σ|y|`) shares the "percentage error" intuition but uses one shared denominator, so
+it is always defined and volume-weighted — which also matches the business question, since a unit of
+error on a 500/day SKU genuinely costs more than one on a 10/day SKU.
+
+**Recommendation:** keep `selection_metric: wape` and read MAPE alongside it. Both are always
+computed and logged; the config only picks the ranking key. If a stakeholder requires MAPE, run
+`--metric mape` consistently across `tune_bayesian`, `evaluate_compare` and `select_model` — tuning
+on one metric and selecting on another is the one combination to avoid.
+
+---
+
+### Q4. How is `config.yaml` linked into the other code files?
+
+There is no import-time magic and no global singleton. Config is **plain data, passed explicitly**.
+
+Every entry point takes `--config` (default `configs/config.yaml`), calls `load_config()` once, and
+threads the resulting dict down as an argument:
+
+```python
+# config.py - the entire mechanism
+def load_config(path="configs/config.yaml"):
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+```
+
+```python
+# every CLI, same shape
+cfg = load_config(args.config)
+logger = setup_logging("train_ml", cfg)          # logging section
+raw = read_raw(cfg["data"]["raw_path"], cfg)     # data section
+split = make_temporal_split(raw, cfg)            # split section
+feat = prepare_features(raw, cfg)                # features section
+```
+
+Library functions never read the file themselves — they receive `cfg` and index the section they
+own (`build_causal_features` reads `cfg["features"]`, `make_temporal_split` reads `cfg["split"]`,
+and so on). Three consequences that matter:
+
+1. **Testability.** `tests/conftest.py` supplies a plain dict fixture; no file or monkeypatching.
+2. **Alternate configs are free.** Passing `--config _v3/config.yaml` redirects data paths, artifact
+   directory, MLflow experiment and log directory in one move — that is exactly how the smoke
+   tests in this document were run without touching the real project directories.
+3. **Auditability.** Because the config is just a dict, `log_run_context()` dumps the *entire
+   effective configuration* into every step's log, so a run can be reproduced from its log alone.
+
+The one override path is `apply_dl_params(cfg, params)` (`config.py`), which returns a **deep copy**
+with tuned sequence-model values applied — `lookback` into `data`, everything else into `dl`. The
+copy keeps each Optuna trial isolated from the next.
+
+---
+
+### Q5. How is the feature / training dataset built, and how is the stockout handling configured?
+
+The chain is always the same three calls, so training and inference cannot diverge:
+
+```python
+raw  = read_raw(path, cfg)             # parse dates, sort by (store, sku, date)
+df   = add_stockout_target(raw, cfg)   # create demand_target + sample_weight
+feat = build_causal_features(df, cfg, demand_col="demand_target")
+```
+
+`prepare_features()` in `data.py` is just those last two steps bundled, and
+`prepare_dataset.py` is the CLI that writes the result to `data/processed/features.parquet` (the
+DVC `prepare` stage). Observed on the full data: **1,100,000 rows × 72 columns**, labelled train
+1,071,888 / validation 14,056 / test 14,056.
+
+#### The stockout problem
+
+On a stockout day `units_sold` is **censored** — it records what was available to sell, not what
+customers wanted. Training directly on it teaches the model that demand was low exactly when it may
+have been high. `config.features.stockout_target_mode` picks the response:
+
+| Mode | `demand_target` on a stockout day | `sample_weight` |
+|---|---|---|
+| `none` **(current default)** | observed `units_sold`, untouched | 1.0 |
+| `rolling_median` | `max(observed, prior 56-day non-stockout rolling median)` | 0.5 |
+| `percentage` | `observed × (1 + stockout_percentage_uplift)` | 0.5 |
+
+Governing keys: `stockout_imputation_window` (56), `stockout_imputation_min_periods` (7),
+`stockout_percentage_uplift` (0.50), `stockout_sample_weight` (0.50).
+
+Worked example under `rolling_median` — a series whose prior non-stockout median is 50 records
+`units_sold = 20` with `stock_out_flag = 1`:
+
+```text
+demand_target           = max(20, 50) = 50
+sample_weight           = 0.5          # trained on, but at half confidence
+stockout_imputed_amount = 30           # audit trail: how much was invented
+```
+
+Three deliberate design points:
+
+- **The columns are always produced.** Even under `none`, `demand_target`, `sample_weight` and
+  `stockout_imputed_amount` exist, so no downstream code branches on the mode. Switching strategy
+  changes numbers, never code paths.
+- **The weight is honoured everywhere.** Trees pass `model__sample_weight`, the torch models use a
+  weighted L1 loss, and Darts receives per-timestep `sample_weight` series.
+- **Imputation is causal.** Every baseline is `shift(1)`-ed before rolling, so a row's target can
+  never be estimated from itself. Verified: building targets from train-only versus full data
+  changes **0 of 21,340** training rows (Q3 probe table).
+
+`none` is the current default because the imputation is a modelling assumption, and the honest v1
+is to measure it as an experiment rather than bake it in.
+
+---
+
+### Q6. How do we make sure leakage is not happening?
+
+Four layers: design, mechanism, tests, and empirical probes.
+
+**1. Design** — the split is chronological, never random (Q1), and the feature contract is explicit
+in config: `promo_known_future: true`, `price_known_future: false`, `weather_known_future: false`.
+
+**2. Mechanism** — see §6 for the full list of eleven controls. The two loadbearing ones:
+
+- Every target-derived statistic is shifted before it is rolled:
+  `s.shift(1).rolling(7).mean()`, never `s.rolling(7).mean()`.
+- Validation and test are produced by **recursive forecasting from a fixed origin**
+  (`recursive_forecast`), so day D+2's `lag_1` is day D+1's *prediction*, never the actual.
+
+**3. Unit tests** — `tests/test_leakage.py` mutates `y_t` and asserts row `t`'s features are
+unchanged, and mutates future targets and asserts past features are unchanged.
+
+**4. Empirical probes** — the unit tests only cover the feature builder, so the end-to-end forecast
+paths were attacked directly by corrupting information unknown at the origin. Full results in
+§6 "Verified empirically"; the summary is that corrupting future labels, future inventory, and the
+covariates declared unknown all produce **bit-identical forecasts** (max Δ = 0.0) for both the tree
+and DL paths, while flipping `promo_flag` — which *is* declared known — moves predictions by 151.3
+and 115.8 units respectively.
+
+That last row is the control, and it is the reason the zeros are meaningful: it proves the models
+are genuinely reading their future inputs rather than ignoring them.
+
+---
+
+### Q7. How are categorical features handled for each model?
+
+Three different mechanisms, because the model families need different things.
+
+**Tree models** (`models/ml.py`) — ordinal encoding inside the sklearn pipeline:
+
+```python
+("cat", Pipeline([
+    ("impute", SimpleImputer(strategy="most_frequent")),
+    ("encode", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)),
+]), categorical)
+```
+
+Categoricals: `store_id`, `sku_id`, `store_sku_id`, `country`, `city`, `channel`, `category`,
+`subcategory`, `brand`. Unseen categories at inference map to `-1` rather than raising, which is
+what makes cold-start requests survivable. Ordinal (not one-hot) because trees split on thresholds
+and 1,005 `store_sku_id` values would explode into 1,005 one-hot columns for no gain.
+
+Note this deliberately does **not** use CatBoost's native categorical handling. That costs some
+CatBoost accuracy (ordered target statistics are genuinely good) but buys one identical inference
+contract across all three libraries. A native-CatBoost branch is a reasonable experiment.
+
+**Torch models** (`models/dl_data.py`) — learned embeddings:
+
+```python
+static_cols   = ["store_id", "sku_id", "channel", "category", "subcategory", "brand"]
+static_maps   = {col: {value: idx + 1 for idx, value in enumerate(sorted(train[col].unique()))}}
+cardinalities = [len(static_maps[col]) + 1 for col in static_cols]   # +1 reserves 0
+```
+
+Index **0 is reserved for unseen**, so an unknown SKU degrades to a learned "unknown" vector rather
+than crashing. Maps are fitted on **training rows only** and saved inside the checkpoint, so
+inference reproduces the exact encoding. Each ID becomes an `embedding_dim`-wide vector (default 16,
+tunable), concatenated into every decoder step (LSTM) or into the future queries (Transformer).
+
+**Darts models** (`train_darts.py`) — integer static covariates via `make_static_maps()`, attached
+with `with_static_covariates()` and consumed because both models are built with
+`use_static_covariates=True`. Unknown values map to `-1`.
+
+---
+
+### Q8. What additional features were engineered — and are the sine/cosine terms future covariates?
+
+**Yes — the cyclical terms are future covariates, and that is the point of them.**
+
+`add_calendar_features()` derives everything deterministically from the date alone, which means they
+are computable for any future date with no data at all:
+
+```python
+out["dow_sin"]   = np.sin(2 * np.pi * d.dt.dayofweek / 7)
+out["dow_cos"]   = np.cos(2 * np.pi * d.dt.dayofweek / 7)
+out["month_sin"] = np.sin(2 * np.pi * (d.dt.month - 1) / 12)
+out["month_cos"] = np.cos(2 * np.pi * (d.dt.month - 1) / 12)
+out["doy_sin"]   = np.sin(2 * np.pi * (d.dt.dayofyear - 1) / 365.25)
+out["doy_cos"]   = np.cos(2 * np.pi * (d.dt.dayofyear - 1) / 365.25)
+```
+
+Why encode cyclically at all: raw `weekday` implies Sunday (6) is six units from Monday (0), when
+they are adjacent. The sin/cos pair places each weekday on a circle so the distance between Sunday
+and Monday is the same as between Monday and Tuesday. Same argument for month and day-of-year across
+the December→January boundary. This matters here because the EDA found strong weekly seasonality
+(autocorrelation peaks at lags 7/14/21/28) and an annual pattern.
+
+The full engineered set beyond the 33 raw columns:
+
+| Group | Features | Available in future? |
+|---|---|---|
+| Calendar | year, month, day, weekday, weekofyear, `is_weekend`, `is_holiday` | **Yes** |
+| Cyclical | `dow_sin/cos`, `month_sin/cos`, `doy_sin/cos` | **Yes** |
+| Demand history | `demand_lag_{1,7,14,28}` | No — history only |
+| Demand rolling | shifted mean/std/max over 7/14/28 | No |
+| Promotions | `promo_flag` (known), `promo_prev_1`, `promo_rate_28` | flag yes, history no |
+| Price | `list_price_lag_1`, `discount_pct_lag_1`, `list_price_mean_28`, `discount_pct_mean_28` | No under current contract |
+| Inventory | `stockout_lag_{1,7,14}`, `stockout_rate_28`, `stock_on_hand_lag_1`, `stock_on_hand_mean_7` | No |
+| Cross-series | `store_demand_mean_lag_1`, `sku_demand_mean_lag_1` | No |
+| Identity | `store_sku_id`, `series_age_days` | Yes (static) |
+
+`price_vs_28d_mean` and `discount_change_1` are created **only** when `price_known_future: true`,
+since they mix a future price with historical context.
+
+---
+
+### Q9. What exactly are the past and future covariates?
+
+`models/dl_data.py::get_dl_feature_columns(cfg)` is the single source of truth, and it is
+config-driven so the three model families cannot disagree.
+
+**Past covariates** — the 56-day lookback window, `past_x [B, 56, P]`. These may contain anything
+observed up to the origin, including the target itself:
+
+```python
+BASE_PAST_NUMERIC = [
+    "demand_target",                                   # the target's own history
+    "promo_flag", "list_price", "discount_pct",        # realized commercial context
+    "temperature", "rain_mm",                          # realized weather
+    "stock_out_flag", "stock_on_hand",                 # realized inventory
+    "is_holiday", "is_weekend",
+    "dow_sin", "dow_cos", "month_sin", "month_cos",
+]
+```
+
+**Future covariates** — the 14-day horizon, `future_x [B, 14, F]`. Only things genuinely known at
+the origin. Calendar is unconditional; the rest is gated by the contract flags:
+
+```python
+BASE_FUTURE_NUMERIC = ["is_holiday", "is_weekend", "dow_sin", "dow_cos", "month_sin", "month_cos"]
+
+if promo_known_future:   future_cols += ["promo_flag"]              # currently ON
+if price_known_future:   future_cols += ["list_price", "discount_pct"]   # currently OFF
+if weather_known_future: future_cols += ["temperature", "rain_mm"]       # currently OFF
+```
+
+**Static covariates** — `static_ids [B, 6]`: `store_id`, `sku_id`, `channel`, `category`,
+`subcategory`, `brand`.
+
+So under the current config: **P = 14 past channels, F = 6 future channels, S = 6 static IDs.**
+Turning on `price_known_future` would make F = 8 and simultaneously add those fields to the tree
+feature set, the Darts future covariates, and the API's required request fields.
+
+Darts uses the same split via `train_darts.get_future_cols(cfg)`, with
+`PAST_COLS = ["stock_out_flag", "stock_on_hand"]` as its past-observed covariates. The critical
+asymmetry: in `forecast_from_origin()` the target and past covariates stop at the origin, while
+future covariates legitimately extend across the horizon — because they carry no target information.
+
+---
+
+### Q10. What input chunk lengths do we search? Is lookback tuned?
+
+**It is now — this was a real gap and has been closed.** `lookback` (the input chunk length) was a
+fixed constant at 56 and never searched.
+
+`tune_dl.py` searches it for every sequence model:
+
+```python
+params = {
+    "lookback": trial.suggest_int("lookback", max(14, horizon), 112, step=14),   # 14..112
+    "learning_rate": trial.suggest_float("learning_rate", 1e-4, 5e-3, log=True),
+    "dropout": trial.suggest_float("dropout", 0.0, 0.3),
+    "batch_size": trial.suggest_categorical("batch_size", [128, 256, 512]),
+    ...
+}
+```
+
+The lower bound is one full horizon (a model cannot see less history than it must forecast) and the
+step of 14 keeps candidates on whole-week boundaries, which matters given the weekly seasonality.
+
+Per-model additions: LSTM gets `hidden_size`, `num_layers`, `embedding_dim`, `weight_decay`;
+Transformer gets `transformer_d_model`, `transformer_heads`, `transformer_layers`, `embedding_dim`,
+`weight_decay`; TiDE/TSMixer get `hidden_size`.
+
+**It demonstrably matters.** In a smoke run the search moved away from the fixed default in both
+directions — LSTM chose **lookback 42**, TiDE chose **lookback 84**, against the hardcoded 56.
+
+Two supporting fixes were needed to make this real:
+
+- `train_darts.build_model()` hardcoded `hidden_size=128`, so tuning it would have been silently
+  ignored. It now reads from `cfg["dl"]`.
+- `train_dl.py` and `train_darts.py` gained `--params-json`, so tuned values actually reach
+  training via `apply_dl_params()`.
+
+**For tree models there is no "input chunk length"** — the equivalent is how far back the lag and
+rolling features reach (`features.demand_lags` = 1/7/14/28 and `demand_roll_windows` = 7/14/28).
+These are config-driven but **not** currently searched, because changing them means rebuilding the
+feature table inside every trial. That is the honest remaining gap here; the hook is
+`build_causal_features(df, cfg)` reading those lists from config.
+
+---
+
+### Q11. Are we running Bayesian optimisation for all the models?
+
+**Now yes — for all seven.** Previously only the three tree models were tuned.
+
+| Model | Tuner | Trials (config) | Searches lookback? |
+|---|---|---|---|
+| lightgbm, xgboost, catboost | `tune_bayesian.py` | `bayes.n_trials` (25) | n/a (lag windows fixed) |
+| lstm, transformer | `tune_dl.py` | `bayes.n_trials_dl` (10) | **yes** |
+| tide, tsmixer | `tune_dl.py` | `bayes.n_trials_dl` (10) | **yes** |
+
+All use Optuna TPE (`multivariate=True`, seeded from `project.random_seed`), all minimise a
+validation metric measured on a **real 14-day forecast from the train-end origin**, and all log one
+nested MLflow run per trial.
+
+`n_trials_dl` defaults to 10 rather than 25 because each sequence-model trial trains a whole network,
+which is far more expensive than a tree fit.
+
+```bash
+python -m demand_forecasting.tune_bayesian --model lightgbm
+python -m demand_forecasting.tune_dl       --model lstm
+python -m demand_forecasting.tune_dl       --model tide --n-trials 5
+```
+
+---
+
+### Q12. How are metrics computed across all Store-SKU pairs, and what is the "final" number?
+
+This extends Q2, which covers the pooling semantics in detail. The short version:
+
+**The headline metric is pooled (micro-averaged) over every row in the window** — all 1,004 active
+series × 14 horizon days = **14,056 rows** — not computed per series and averaged.
+
+```python
+overall = regression_metrics(df[y_col], df[pred_col])   # one number over all rows
+```
+
+So `metrics.json → validation.overall.wape` is a single global figure. WAPE and bias are ratios of
+sums (**volume-weighted**); MAE, RMSE and SMAPE are means over rows.
+
+**Per-series and per-horizon numbers now exist**, via `report_best_models.py`, which was added
+precisely because the pooled figure hides segment failure:
+
+| Report | Contents |
+|---|---|
+| `reports/v1/best_models_per_series_metrics.csv` | one row per `(model, store_id, sku_id)`, sorted worst-WAPE-first |
+| `reports/v1/best_models_per_horizon_metrics.csv` | one row per `(model, horizon_day)` — D+1 … D+14 |
+| `reports/v1/best_models_pooled_vs_macro.csv` | pooled vs macro WAPE, plus best/worst series |
+
+The per-horizon view is the one most worth reading, because it exposes error growth across the
+horizon that a single pooled number cannot. From a smoke run (LightGBM):
+
+```text
+horizon_day   wape     mape
+          1  0.2511   0.2745
+          2  0.1638   0.3013
+          3  0.2863   4.2483   <- MAPE explodes on a low-demand row; WAPE barely moves
+          9  0.6907   4.1418
+         14  0.1941   0.2117
+```
+
+That is Q3's argument in miniature: the same rows give a stable WAPE and a wildly unstable MAPE.
+
+**"Final metrics" therefore means:** the pooled metric over the whole 14-day test window across all
+Store-SKU pairs — not an average of per-series numbers, and not an average of per-day numbers.
+Compare pooled against macro in `best_models_pooled_vs_macro.csv` before trusting the headline.
+
+---
+
+### Q13. Are inference results stored for every Store-SKU pair? How does that work?
+
+Yes, at row granularity — one row per `(date, store_id, sku_id)`.
+
+**During training/evaluation**, each model writes its own predictions next to its artifact:
+
+```text
+artifacts/<model>/validation_predictions.csv    # 14,056 rows: 1,004 series x 14 days
+artifacts/<model>/test_predictions.csv          # 14,056 rows
+```
+
+These carry the full truth row plus a `prediction` column, so actuals, promo flags, prices and costs
+sit alongside the forecast — which is what makes the after-the-fact breakdowns possible without
+retraining. Both are also logged to MLflow under `artifact_path="predictions"`.
+
+**During batch inference**, all three CLIs emit the identical contract:
+
+```text
+date,store_id,sku_id,prediction
+```
+
+**Consolidated for the champions**, `report_best_models.py` writes
+`reports/v1/best_models_test_predictions.csv` with the best model per family stacked together:
+
+```text
+date, store_id, sku_id, actual, prediction, model, family, error, abs_error, horizon_day
+```
+
+For production the recommendation in `explanation.md` §14 still stands: store forecasts keyed by
+`forecast_origin`, `target_date`, series id, model version and data version, so a forecast can
+always be traced to the model and data that produced it. The CSVs here are the local equivalent.
+
+---
+
+### Q14. Where do the runs live — DagsHub or local?
+
+**By default, local sqlite** — and note this changed with MLflow 3.x:
+
+```text
+MLFLOW_TRACKING_URI unset  ->  sqlite:///mlflow.db      (the current default)
+./mlruns file store        ->  now raises unless MLFLOW_ALLOW_FILE_STORE=true
+```
+
+The legacy `./mlruns` directory in this repo is a leftover from an older MLflow. View runs with:
+
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow.db      # http://localhost:5000
+```
+
+**For DagsHub**, set the environment and everything routes there automatically —
+`configure_mlflow()` only calls `set_tracking_uri()` when `MLFLOW_TRACKING_URI` is present:
+
+```bash
+export DAGSHUB_USER=<user> DAGSHUB_REPO=<repo> DAGSHUB_TOKEN=<token>
+source scripts/setup_dagshub.sh     # exports MLFLOW_TRACKING_URI / USERNAME / PASSWORD
+```
+
+Then runs appear at `https://dagshub.com/<user>/<repo>.mlflow`. `.env` already holds these values
+locally and is gitignored — never commit the token.
+
+What lands in every run: hyperparameters, the feature-contract flags, stockout strategy,
+`train_*` / `val_*` / `test_*` metrics, business-proxy metrics, split-boundary tags, the model
+artifact, and both prediction CSVs. Runs are tagged for filtering:
+
+```text
+tags.stage = 'final'                                 # the comparable, promotable models
+tags.stage = 'tuning' and tags.model = 'lightgbm'    # every LightGBM trial
+tags.stage = 'tuning_parent'                         # one row per study
+tags.family = 'darts'
+```
+
+Local logs under `logs/<step>.log` are the parallel record and stay readable with no server at all.
+
+---
+
+### Q15. Is there a script that reports the best model per family with test inference vs actuals?
+
+Yes — `report_best_models.py`, added for exactly this.
+
+```bash
+python -m demand_forecasting.report_best_models                  # uses config selection_metric
+python -m demand_forecasting.report_best_models --metric mape    # best by lowest val MAPE
+```
+
+It scans every `artifacts/*/metrics.json`, groups models by family (`ml` / `dl` / `darts`), picks the
+lowest `val_<metric>` **within each family**, then loads that model's `test_predictions.csv` and
+compares against actuals. Output:
+
+| File | Contents |
+|---|---|
+| `reports/v1/all_models_metrics.csv` | every model, train/val/test × wape, mape, mae, rmse, smape, bias |
+| `reports/v1/best_models.csv` | the champion of each family, ranked overall |
+| `reports/v1/best_models_test_predictions.csv` | per-row test predictions vs actuals, with `error` and `horizon_day` |
+| `reports/v1/best_models_per_series_metrics.csv` | metrics per Store-SKU, worst first |
+| `reports/v1/best_models_per_horizon_metrics.csv` | metrics per horizon day D+1 … D+14 |
+| `reports/v1/best_models_pooled_vs_macro.csv` | pooled vs macro WAPE and best/worst series |
+
+Example output from a smoke run:
+
+```text
+ overall_rank family    model  train_wape  val_wape  val_mape  test_wape  test_mape
+            1     dl     lstm         NaN    0.2477     0.330     0.2729     0.9028
+            2     ml lightgbm      0.1171    0.2486     0.347     0.2777     0.9880
+            3  darts     tide         NaN    0.3599     0.396     0.3597     0.8772
+```
+
+`train_wape` is `NaN` for the sequence models because `train_dl.py` and `train_darts.py` do not score
+the training set (they early-stop on validation instead); only `train_ml.py` reports in-sample fit.
+
+---
+
+### Q16. How do I actually run inference for the next 14 days? What request body does the API need?
+
+**Don't hand-write the body — generate it**, so the contract is never guessed:
+
+```bash
+python -m demand_forecasting.make_future_template \
+  --output-csv reports/future_covariates.csv \
+  --output-json reports/forecast_request.json
+# add --series-limit 2 for a small smoke test
+```
+
+This reads history, finds every series still active on the final date, builds the 14 contiguous
+dates that follow, fills the deterministic calendar fields, defaults `promo_flag` to 0, and writes
+both a CSV (for the batch CLIs) and a JSON body (for the API).
+
+**Required fields** are derived from the contract, not fixed. Under the current config
+(`promo_known_future: true`, price and weather `false`):
+
+```json
+{
+  "future_covariates": [
+    {"date": "2024-01-01", "store_id": "STORE0001", "sku_id": "SKU0001",
+     "is_holiday": 0, "promo_flag": 0},
+    {"date": "2024-01-02", "store_id": "STORE0001", "sku_id": "SKU0001",
+     "is_holiday": 0, "promo_flag": 0}
+  ]
+}
+```
+
+Turning on `price_known_future` would additionally require `list_price` and `discount_pct` per row;
+`weather_known_future` would require `temperature` and `rain_mm`.
+
+**Validation rules** — all enforced before any model loads, each returning 422 with the reason:
+
+1. every required field present;
+2. dates parseable;
+3. no duplicate `(store_id, sku_id, date)`;
+4. exactly `horizon` (14) rows per series;
+5. dates exactly contiguous, starting the day **after** the last history date;
+6. the series must exist in history (static attributes are joined from its latest row).
+
+Verified end to end — the generated body returns 200:
+
+```text
+request rows: 28   fields: [date, is_holiday, promo_flag, sku_id, store_id]
+status: 200   horizon: 14   count: 28
+  {'date': '2024-01-01', 'store_id': 'STORE0001', 'sku_id': 'SKU0001', 'prediction': 97.13}
+```
+
+**To serve a specific model**, point the registry at it — the API is model-agnostic and
+`inference_router.py` dispatches on `family`:
+
+```yaml
+# configs/model_registry.yaml
+selected_model:
+  name: lstm
+  family: dl            # ml | dl | darts
+  model_type: lstm
+  artifact_path: artifacts/lstm/model.pt
+  # darts additionally needs: metadata_path: artifacts/tide/metadata.joblib
+```
+
+**To score every family's champion**, loop the registry over each and call the API, or skip HTTP
+entirely and use the batch CLIs, which take the same `future_covariates.csv`:
+
+```bash
+python -m demand_forecasting.inference_ml --model artifacts/lightgbm/model.joblib \
+  --history data/raw/data.csv --future reports/future_covariates.csv --output artifacts/forecast_lightgbm.csv
+
+python -m demand_forecasting.inference_dl --model artifacts/lstm/model.pt \
+  --history data/raw/data.csv --future reports/future_covariates.csv --output artifacts/forecast_lstm.csv
+
+python -m demand_forecasting.inference_darts --model-type tide \
+  --model artifacts/tide/model.pt --metadata artifacts/tide/metadata.joblib \
+  --history data/raw/data.csv --future reports/future_covariates.csv --output artifacts/forecast_tide.csv
+```
+
+One caveat worth knowing: the Darts adapter requires **every trained series** to be present in the
+request (`validate_future_coverage`), so a single-series API call fails when a Darts model is
+promoted. The ML and DL adapters accept any subset.
+
+---
+
+### Q17. What else is worth knowing that the questions above did not cover?
+
+**Things that will bite you**
+
+1. **Never set `training.n_jobs` to the full CPU count.** The OpenMP backends collapse into
+   spin-wait contention: the same LightGBM fit took 0.31s at 8 threads and 235s at 16. `-1` now
+   resolves to half the CPUs. It looks like a hang, not a slowdown.
+2. **MLflow no longer defaults to `./mlruns`** (Q14). Use `sqlite:///mlflow.db`.
+3. **Tuning cost is dominated by `recursive_forecast`**, not by model fitting — it rebuilds causal
+   features once per horizon day, 14× per trial. This is why `n_trials_dl` is 10 and why
+   rolling-origin validation (Q1) multiplies cost linearly.
+4. **`data/raw/data.csv` is 212 MB.** Track it with DVC; never commit it.
+
+**Known gaps, honestly stated**
+
+| Gap | Impact |
+|---|---|
+| Single validation origin (Q1) | selection rests on one December fortnight |
+| Tree lag/rolling windows not tuned (Q10) | their "input chunk length" is fixed |
+| No per-series metrics in `full_evaluation` | now available via `report_best_models.py`, but not in `metrics.json` |
+| `train_dl` / `train_darts` skip train metrics | `train_wape` is `NaN` for sequence models |
+| Darts inference needs all trained series (Q16) | blocks single-series API calls for a Darts champion |
+| No rolling retrain / scheduled job | retraining is manual |
+
+**Bugs found by auditing, now fixed** — each was silent, and worth knowing the class of failure:
+
+- `splits.py` labelled validation `"val"` while tests asserted `"validation"`.
+- `middle_out_allocate()` used `validate="one_to_many"` on parent keys that repeat per date, so it
+  raised `MergeError` for **any** horizon beyond one day. `hierarchy.py` had zero test coverage.
+- `inference_darts.py` called `TimeSeries.pd_dataframe()`, removed in Darts 0.39 — the entire Darts
+  inference path was dead code, and `requirements.txt` pinned an unmet `>=0.47`.
+- `strategy_analysis.py` called `read_raw()` without `cfg` and crashed on every run.
+- `log_json_artifact()` and `evaluate_compare --artifacts` both ignored `training.save_dir`.
+- `train_darts.build_model()` hardcoded `hidden_size=128`, which would have made tuning it a no-op.
+
+**Reproducing any result** needs exactly four things: the DVC data version, the git commit, the
+`Effective configuration` block in that step's log, and the MLflow run id printed in the same log.
+
+---
+
+## 9. The v1 production run
+
+This section records the actual full-dataset run: how it was configured, what it cost, where the
+artifacts live, what the results were, and what should change in v2.
+
+### 9.1 How it was run
+
+```bash
+PYTHON=./venv/bin/python bash scripts/run_v1.sh
+```
+
+`scripts/run_v1.sh` is the single orchestrator. It runs, in order: `prepare_dataset` → tuning for
+all seven models → final training for all seven → `evaluate_compare` → `report_best_models` →
+`select_model` → `make_future_template`.
+
+Two deliberate properties:
+
+- **A failing model does not abort the run.** Each stage goes through a `run()` wrapper that records
+  `PASS`/`FAIL` with a duration into `reports/v1_run_status.txt` and continues. One library-specific
+  failure should not cost the other six models.
+- **Training falls back gracefully.** `params_arg()` attaches `--params-json` only if that model's
+  tuning actually produced a file, so a failed tuning stage degrades to default hyperparameters
+  rather than crashing training.
+
+Trial counts are per family because the cost profile differs by an order of magnitude:
+
+| Family | Models | Trials | Why |
+|---|---|---|---|
+| tree | lightgbm, xgboost, catboost | 20 | ~1.7 min/trial |
+| torch | lstm, transformer | 4 | each trial trains a network |
+| darts | tide, tsmixer | 3 | slowest to construct and fit |
+
+### 9.2 Measured cost, and the two decisions it forced
+
+Everything below was measured on the full 1.1M-row dataset before the run, not estimated:
+
+```text
+read_raw                3.8s   1,100,000 rows
+feature build           6.7s   <- recursive_forecast runs this 14x per forecast
+lightgbm fit           23.2s   1,043,748 rows x 52 features
+recursive_forecast     67.9s
+=> one tree trial ~ 1.5 min
+
+GPU: NVIDIA RTX 5060 Laptop (CUDA available)
+DL training windows at lookback=56: 1,030,655  (4,025 batches/epoch)
+DL dataset build:      99.9s
+DL per __getitem__:    0.42ms  -> ~7 min/epoch of pure pandas indexing
+DL epoch:              ~6.6 min
+```
+
+**Decision 1 — subsample DL training windows.** At ~6.6 min/epoch, one LSTM fit is 1-3 hours and
+tuning it is 10-30 hours. The cost is dominated by per-sample pandas indexing on the CPU, not by GPU
+compute — the GPU is starved. Consecutive windows also share 55 of their 56 history days, so the
+full set is highly redundant. `dl.max_train_windows: 150000` samples windows with a seeded RNG,
+keeping every series represented. **Validation, test and inference windows are never subsampled** —
+only what the model trains on.
+
+**Decision 2 — bound the epoch budget.** `dl.epochs` 30 → 15 and `patience` 5 → 3. Early stopping
+still selects the epoch count; this only caps the worst case.
+
+Both are v1 tractability tradeoffs, not modelling improvements — see §9.6.
+
+### 9.3 Where the runs are tracked
+
+**DagsHub MLflow**, verified reachable and writable before launch:
+
+```text
+https://dagshub.com/Himanshu-Verma-ds/demand-forecasting-assignment.mlflow
+experiment: fmcg-demand-forecasting-v1
+```
+
+Credentials come from `.env`. A gap was fixed to make this work: **nothing in the codebase ever
+loaded `.env`**, so despite the file holding valid DagsHub credentials, every run had been going to
+the local store. `configure_mlflow()` now calls `load_dotenv(override=False)` — the file supplies
+defaults, and anything already exported in the shell still wins.
+
+Run structure in the experiment:
+
+| `tags.stage` | Run name | What it holds |
+|---|---|---|
+| `tuning_parent` | `<model>-tuning` | study config, best params, `best_val_*`, trials CSV |
+| `tuning` | `<model>-tune-trial-NNN` | that trial's params + full validation metric set |
+| `final` | `<model>-final` / `<model>-global` | tuned params, train/val/test metrics, model artifact, prediction CSVs |
+
+Useful filters: `tags.stage = 'final'`, or `tags.stage = 'tuning' and tags.model = 'lightgbm'`.
+
+### 9.4 The OOM, and the optimisation it forced
+
+The first launch was **killed by the OS for low memory** partway through LightGBM tuning. The WSL VM
+has 11.9 GB total, and the run was consuming close to all of it.
+
+**Cause.** `recursive_forecast()` rebuilt causal features over the *entire* history once per horizon
+day — a ~1.07M-row × 72-column frame, 14 times per forecast, plus pandas intermediates inside each
+`groupby().transform()`. That is several GB of churn per trial.
+
+**The insight.** Every feature is a *bounded* lag or rolling window. The longest is 28 days. History
+older than that provably cannot influence a forecast, so rebuilding features over three years of
+data to predict 14 days was pure waste.
+
+`required_history_days(cfg)` derives the bound from config (`max(window) * 2 + horizon` = **70
+days**), and `recursive_forecast` trims history to that tail per series before the loop — reducing
+the per-day feature frame from ~1.07M rows to ~70k.
+
+**The one subtlety.** `series_age_days` is a running counter (`groupby().cumcount()`), so trimming
+would restart it at zero and silently corrupt the feature. The rows dropped are added back as a
+per-series offset after each feature build.
+
+**Verified, not assumed.** This sits on the leakage-critical path, so it is pinned by an equivalence
+test rather than trusted — `tests/test_recursive_history_trim.py` runs the same forecast with and
+without trimming and asserts the predictions match at `atol=0, rtol=0`, plus a second test that
+`series_age_days` is identical either way.
+
+Measured on the full dataset:
+
+| | Before | After |
+|---|---|---|
+| `recursive_forecast` | 67.9s | **21.9s** (3.1× faster) |
+| Feature frame per horizon day | ~1.07M rows | ~70k rows |
+| Peak RSS during tuning | ~10 GB (OOM-killed) | **3.47 GB** |
+| Estimated tree trial | ~1.5 min | **~45s** |
+
+A second, smaller fix: `tune_bayesian` now `del`s the full feature table once `train` is extracted,
+since every trial refits on `train` and `recursive_forecast` rebuilds its own features from history.
+That frees several hundred MB for the duration of the study.
+
+This is the rare case where the memory fix was also a correctness-neutral 3× speedup — worth
+recording because the same "bounded window" argument applies anywhere else the pipeline
+recomputes over full history.
+
+### 9.5 Running under host memory pressure
+
+The trim was not enough on its own. The run was killed twice more, and the second time it died
+within seconds of starting — before the process had grown at all. The cause was **ambient host
+pressure**, not this pipeline:
+
+```text
+Windows host   : 23,960 MB total, ~4,600 MB free with nothing of ours running
+WSL2 VM        : 11,656 MB allocated
+```
+
+WSL2 claims memory from Windows and is slow to hand it back, so on a box already near its limit the
+supervisor kills long-lived background jobs almost immediately regardless of what they are doing.
+
+Four changes made the run survivable:
+
+| Change | Effect |
+|---|---|
+| `bayes.max_tune_rows: 200000` | tuning ranks configurations; it does not need every row. Final training still uses all of them |
+| `del bundle/pred/merged` + `gc.collect()` per trial | a fitted booster is hundreds of MB and the collector was not keeping up across trials |
+| `training.n_jobs: 4` | each worker carries its own histogram buffers, so fewer threads is less memory as well as safely clear of the OpenMP cliff (§Q17) |
+| **Resumable studies** | the important one, below |
+
+**Resumability.** Each Optuna study now persists to `artifacts/tuning/<model>_study.db` with
+`load_if_exists=True`, and `run_v1.sh` skips any training stage whose `metrics.json` already exists.
+An interruption stops costing the completed work:
+
+```text
+run 1: --n-trials 2  -> 2 completed
+run 2: --n-trials 4  -> "Resuming study: 2 trials already complete, 2 remaining"
+                     -> total completed trials in study: 4
+```
+
+That behaviour was smoke-tested before relying on it, because a bug there would have silently
+re-run everything.
+
+**Execution mode.** With resumability in place the practical approach on this box is short
+foreground chunks rather than one long background job — each tuning stage is re-entrant, so
+progress accumulates across invocations however they are interrupted.
+
+Post-trim timings, tuning on 200k rows:
+
+```text
+lightgbm : ~37s per trial
+xgboost  : slower per trial (denser trees at these settings)
+catboost : comparable to lightgbm
+tide     : minutes per trial - Darts builds ~4,000 TimeSeries objects for 1,005 series
+```
+
+### 9.6 Experiment-tracking gaps found mid-run, and the fixes
+
+Two reported problems — trial models missing from MLflow, and no train loss — were both confirmed
+by querying the live DagsHub experiment rather than by reading code:
+
+```text
+experiment: fmcg-demand-forecasting-v1  (62 runs: 54 tuning, 8 tuning_parent)
+
+[tuning] tide-tune-trial-000
+    artifacts: NONE
+    metrics  : []
+[tuning] transformer-tune-trial-002
+    artifacts: NONE
+    metrics  : [epoch_train_weighted_mae_scaled, epoch_val_weighted_mae_scaled, val_*]
+    has train metric: False
+[tuning_parent] transformer-tuning
+    artifacts: ['tuning']        <- proves artifact upload to DagsHub works
+```
+
+**Diagnosis.**
+
+| Symptom | Cause |
+|---|---|
+| No trial models in MLflow | `bayes.log_trial_models` defaulted to `false`, **and** `tune_dl.py` had no model-persisting code at all — so sequence-model trials could never log one |
+| No train loss on tree trials | `tune_bayesian` scored only the validation forecast; the training fit was never evaluated |
+| No train-loss summary on torch trials | per-epoch `epoch_train_weighted_mae_scaled` was logged, but no summary metric at the selected epoch, so it did not appear as a run-level `train_*` value |
+| Only "best" models seemed saved | correct — only the champion reached `artifacts/<model>/`, and only the parent run held tuning artifacts |
+
+Note the parent run already carried artifacts, which ruled out a DagsHub permissions or transport
+problem and pointed at our own code.
+
+**Fixes.**
+
+1. `bayes.log_trial_models: true` — every trial now persists its fitted model and logs it under the
+   run's `model/` artifact path, so any configuration in the sweep can be reloaded without retraining.
+2. `tune_dl.py` gained `save_trial_model()`, handling both the torch checkpoint format (state dict +
+   `DLMetadata` + dl config + lookback/horizon, i.e. everything inference needs to rebuild the
+   architecture) and the Darts `model.save()` format. Failure to upload is caught and logged so it
+   can never lose a trial's metrics.
+3. `tune_bayesian` now scores the training fit each trial and logs `train_wape`, `train_mape`,
+   `train_mae`, `train_rmse`, `train_smape`, `train_bias`, making per-trial overfitting visible.
+4. `train_with_validation()` now returns the train loss at the selected epoch and logs
+   `train_weighted_mae_scaled` / `val_weighted_mae_scaled` as run-level metrics.
+
+**Cost.** Logging every trial's binary is a few GB of uploads across a full sweep. That is the
+intended tradeoff — full reproducibility of the search over disk — and it is a one-line config
+change to revert.
+
+### 9.7 v1 results
+
+Full dataset, 1,004 forecastable Store-SKU series × 14 days = 14,056 scored rows per split.
+Selection on **validation WAPE**; test evaluated once.
+
+| rank | model | family | train_wape | **val_wape** | val_mape | test_wape | test_mape |
+|---|---|---|---|---|---|---|---|
+| 1 | **transformer** | dl | – | **0.2648** | 0.5470 | 0.2690 | 0.5447 |
+| 2 | lstm | dl | – | 0.2650 | 0.5384 | 0.2684 | 0.5180 |
+| 3 | xgboost | ml | 0.2644 | 0.2716 | 0.5395 | 0.2706 | 0.5226 |
+| 4 | catboost | ml | 0.2664 | 0.2719 | 0.5461 | **0.2683** | 0.5283 |
+| 5 | lightgbm | ml | 0.2659 | 0.2721 | 0.5458 | 0.2709 | 0.5329 |
+
+(`train_wape` is blank for the sequence models because they early-stop on validation and never
+score the training set — see §9.9.)
+
+**Four things this table says.**
+
+1. **Every model lands within 0.007 WAPE.** The spread from best to worst is 2.7% relative. On this
+   dataset the choice of model family is close to irrelevant compared with the feature contract and
+   the leakage discipline that all five share.
+
+2. **The champion by validation is not the best on test.** Transformer wins validation (0.2648) but
+   **catboost has the lowest test WAPE (0.2683)**, from 4th place on validation. The validation gap
+   between 1st and 4th is 0.0071; the test ordering reverses it. This is direct evidence for the
+   single-origin concern in Q1 — a 0.0002 gap between transformer and lstm is noise, and selecting
+   on one 14-day December window cannot distinguish these models.
+
+3. **Nothing is overfitting.** For the tree models train and validation WAPE are nearly identical
+   (xgboost 0.2644 vs 0.2716). The models are at capacity, not memorising. More regularisation
+   would not help; more signal might.
+
+4. **MAPE is ~0.54 while WAPE is ~0.27 — exactly double.** With ~1.5% of rows under 5 units, MAPE is
+   dominated by small-denominator rows, which is why it stays the diagnostic and WAPE the decision
+   metric (Q3).
+
+**Error is flat across the horizon.** Per-horizon WAPE for the champion:
+
+```text
+D+1  0.2680   D+6  0.2695   D+11 0.2615
+D+2  0.2755   D+7  0.2652   D+12 0.2685
+D+3  0.2816   D+8  0.2678   D+13 0.2609
+D+4  0.2711   D+9  0.2901   D+14 0.2742
+D+5  0.2519   D+10 0.2629
+```
+
+There is **no error growth from D+1 to D+14** — the range is 0.252–0.290 with no trend. For the
+direct multi-horizon Transformer that is expected (each day is predicted from its own known-future
+query rather than from a chain of predictions), and it means the 14-day horizon is not the limiting
+factor. Weekly seasonality is already captured.
+
+**Pooled vs macro, and the per-series spread:**
+
+| model | pooled test WAPE | macro test WAPE | worst series | best series |
+|---|---|---|---|---|
+| transformer | 0.2690 | 0.2764 | 0.6458 | 0.0958 |
+| xgboost | 0.2706 | 0.2739 | 0.5450 | 0.1239 |
+
+Pooled and macro are close, so the headline is not being propped up by high-volume series. But the
+**per-series range is 0.10 to 0.65** — a 6.7× spread. The aggregate hides that some Store-SKU pairs
+are forecast three times worse than others, which is where the next real accuracy gain lives
+(§9.9).
+
+**Darts (TiDE/TSMixer) is absent from v1.** Its tuning failed on a genuine bug, found and fixed
+during the run: `forecast_from_origin()` did not exclude series whose data ends before the forecast
+origin. Exactly one series does — `STORE0013 / SKU0073`, last seen **2022-09-12** — and Darts
+rejected the whole batch because that series' known-future covariates could not span the horizon:
+
+```text
+ValueError: For the given forecasting horizon `n=14`, the provided `future_covariates`
+at series sequence index `992` do not extend far enough into the future.
+```
+
+The fix filters to series whose data reaches `origin + horizon`, which yields **1,004 of 1,005** —
+matching the active-series count the EDA reported. TiDE/TSMixer are covered in v2.
+
+### 9.8 Where the artifacts live, and what each one is for
+
+```text
+artifacts/
+├── tuning/
+│   ├── <model>_best_params.json     winning hyperparameters, consumed by --params-json
+│   ├── <model>_trials.csv           every trial: params, metrics, state
+│   ├── <model>_study.db             Optuna storage - makes tuning resumable
+│   └── <model>_trial_NNN.joblib|pt  every trial's fitted model (log_trial_models)
+├── <model>/
+│   ├── model.joblib | model.pt      the deployable artifact, refit on train+validation
+│   ├── metadata.joblib              darts only: series keys, static maps, feature contract
+│   ├── metrics.json                 train/validation/test metrics + breakdowns
+│   ├── validation_predictions.csv   per-row: 14,056 rows
+│   └── test_predictions.csv         per-row: 14,056 rows
+└── <model>_evaluation.json          the same evaluation, logged to MLflow
+
+reports/
+├── model_comparison.csv                     all models ranked by the selection metric
+├── all_models_metrics.csv                   train/val/test x 6 metrics for every model
+├── best_models.csv                          the champion of each family
+├── best_models_test_predictions.csv         champions' test predictions vs actuals
+├── best_models_per_series_metrics.csv       one row per Store-SKU (1,004 rows)
+├── best_models_per_horizon_metrics.csv      one row per horizon day D+1..D+14
+├── best_models_pooled_vs_macro.csv          pooled vs macro WAPE, best/worst series
+├── forecast_store_sku.csv                   THE DELIVERABLE: 14-day forecast, long form
+├── forecast_store_sku_wide.csv              same, one column per model
+└── v1_run_status.txt                        PASS/FAIL/SKIP trail with durations
+
+configs/model_registry.yaml                  the promoted champion the API serves
+logs/<step>.log                              per-step narrative, midnight rotation
+```
+
+**What to read for what:**
+
+| Question | File |
+|---|---|
+| Which model do we ship? | `configs/model_registry.yaml` |
+| How do the models compare? | `reports/v1/model_comparison.csv` |
+| Best in each family? | `reports/v1/best_models.csv` |
+| **The 14-day Store-SKU forecast** | `reports/v1/forecast_store_sku.csv` |
+| Which series forecast badly? | `reports/v1/best_models_per_series_metrics.csv` (sorted worst-first) |
+| Does error grow over the horizon? | `reports/v1/best_models_per_horizon_metrics.csv` |
+| What did trial 7 of xgboost do? | `artifacts/tuning/xgboost_trials.csv`, or its MLflow run |
+| Why did a run behave oddly? | `logs/<step>.log` |
+
+**The deliverable forecast** — `reports/v1/forecast_store_sku.csv`, 28,112 rows
+(2 champions × 1,004 series × 14 days), covering **2024-01-01 → 2024-01-14**, the horizon
+immediately after history ends:
+
+```text
+date,store_id,sku_id,prediction,model,family
+2024-01-01,STORE0001,SKU0001,104.20539093017578,transformer,dl
+2024-01-02,STORE0001,SKU0001,103.56144714355469,transformer,dl
+```
+
+**The promoted model** (`configs/model_registry.yaml`) records the artifact path, the metric that
+won, and both validation and test metrics, so what is being served and why is auditable without
+opening MLflow:
+
+```yaml
+selected_model:
+  name: transformer
+  family: dl
+  model_type: transformer
+  artifact_path: artifacts/transformer/model.pt
+  selection_metric: validation_wape
+  selection_value: 0.2648181843655995
+  validation_metrics: {wape: 0.2648, mape: 0.5470, mae: 16.45, rmse: 25.12, bias: 0.0226}
+  test_metrics:       {wape: 0.2690, mape: 0.5447, mae: 16.79, rmse: 25.71, bias: 0.0275}
+```
+
+`inference_router.py` reads `family` and dispatches to the right adapter, so the API needs no
+knowledge of which model is deployed.
+
+### 9.9 Which model actually won, and what I would ship
+
+**Selected: the global Transformer** (validation WAPE 0.2648). But the honest reading is more
+interesting than the ranking.
+
+**The models are statistically indistinguishable.** Best to worst spans 0.2648 → 0.2721 on
+validation — 2.7% relative — and the ordering *reverses* on test, where catboost (4th on validation)
+posts the best number. A 0.0002 gap between transformer and lstm is not a result; it is noise from a
+single 14-day origin. Anyone reporting "the Transformer is the best model" from this evidence is
+overclaiming.
+
+> **Confirmed by v2 (§9.13).** With a doubled search the Transformer again won validation and again
+> failed to be best on test — this time finishing *worst* of the non-darts models. LSTM took the
+> test crown. The recommendation below is not a hedge; it is what the evidence supports.
+
+**What I would actually ship: CatBoost or LightGBM**, despite the Transformer winning validation.
+The accuracy difference is inside the noise band, and the tree models are dramatically cheaper to
+operate:
+
+| | tree | sequence |
+|---|---|---|
+| Fit time | ~25s | 10–30 min |
+| Tuning trial | ~40s | 7–30 min |
+| Inference | CPU, ~22s for all 1,004 series | GPU preferred |
+| Explainability | SHAP / feature importance out of the box | attention inspection at best |
+| Failure mode | degrades gracefully | needs the exact feature schema and checkpoint |
+| Retraining cost | trivial | needs GPU scheduling |
+
+CatBoost is the concrete pick: across both runs it is the only model that is simultaneously
+top-three on validation, top-three on test, stable between v1 and v2 (identical to five decimal
+places), and cheap to retrain. You do not pay 30× the training cost and add a GPU dependency for
+0.007 WAPE that reverses on the test window. The Transformer is a genuine challenger worth keeping in the harness — if v2 with a
+larger budget opens a *consistent* gap across multiple origins, that changes the calculus.
+
+**The strongest v1 finding is not which model won — it is that the model barely matters.** Five
+architectures with very different inductive biases converged to within 3% of each other. That says
+the remaining error is not a modelling-capacity problem: train and validation WAPE are nearly
+identical, so nothing is overfitting, and no architecture extracted signal the others missed. The
+ceiling is being set by the information in the features, not the function class on top of them.
+
+That reframes where v2 effort should go.
+
+### 9.10 What v2 should change
+
+Ordered by expected value per unit of effort.
+
+**1. Rolling-origin validation (highest value).** Everything above rests on one December fortnight,
+and the validation ordering already contradicts the test ordering. Six to twelve origins spread
+across seasons, selecting on mean WAPE with the spread reported, would turn "transformer wins by
+0.0002" into a defensible statement. This is the single change that would most improve decision
+quality, and it is already scoped in Q1.
+
+**2. Attack the per-series spread, not the average.** Per-series WAPE ranges 0.10 → 0.65. The
+aggregate is healthy while some series are forecast 6.7× worse than others. Concretely: segment the
+worst decile, check whether it is low-volume, promo-heavy, or stockout-prone, and consider a
+specialist model or per-segment weighting. This is where real accuracy lives, and v1 has the data to
+start — `reports/v1/best_models_per_series_metrics.csv` is sorted worst-first.
+
+**3. More signal, not more capacity.** Since nothing overfits, add information rather than
+parameters:
+- promo *depth* interactions and lead/lag effects around campaigns (promo lift is 63–131% by
+  category per the EDA, and is currently a single binary flag in the future covariates);
+- price relative to category and to competitor SKUs in the same subcategory;
+- calendar richness: paydays, school terms, local events, holiday proximity rather than a same-day
+  binary;
+- turning on `price_known_future` *if* the business genuinely commits prices 14 days ahead — that is
+  a contract question, not a modelling one, and the code already supports the switch everywhere.
+
+**4. Revisit the stockout target.** `stockout_target_mode` is still `none`, so the model trains on
+censored sales as if they were demand on 3% of rows. `rolling_median` and `percentage` are
+implemented and leakage-tested; v1 simply never ran the comparison. That is a cheap, well-scoped
+experiment.
+
+**5. Quantile forecasts instead of point forecasts.** Inventory decisions need a service level, not
+a mean. Pinball loss at P50/P90 would make the output directly usable for safety-stock sizing, and
+would make the asymmetric business proxy (`underforecast_margin_risk` vs
+`overforecast_purchase_cost`) actionable rather than descriptive.
+
+**6. Native categorical handling for CatBoost.** v1 ordinal-encodes for all three libraries to keep
+one inference contract (§Q7). A native-CatBoost branch with ordered target statistics is a fair test
+of whether that uniformity costs accuracy.
+
+**7. Engineering follow-ups.**
+- Score the training set in `train_dl`/`train_darts` so `train_wape` is populated for every family.
+- Tune the tree lag/rolling windows — currently the only untuned "input chunk length" (§Q10).
+- Vectorise `MultiSeriesWindowDataset.__getitem__`; at 0.42 ms per sample the GPU is starved, and
+  removing `max_train_windows` entirely would then be affordable.
+- Add rolling retraining on a schedule with the drift report as the trigger.
+
+**Explicitly not worth doing in v2:** a bigger Transformer. v1 shows the architecture is not the
+constraint.
+
+### 9.11 The v2 run
+
+v2 keeps the data, features and leakage contract identical to v1 and changes **only the search
+budget and training schedule**, so the two are directly comparable.
+
+`configs/config_v2.yaml`:
+
+| Setting | v1 | v2 | Why |
+|---|---|---|---|
+| `mlflow_experiment` | `fmcg-demand-forecasting-v1` | `fmcg-demand-forecasting-v2` | separate experiment, v1 preserved |
+| `training.save_dir` | `artifacts/` | `artifacts_v2/` | v1 artifacts never overwritten |
+| `bayes.n_trials` (tree) | 12 | **25** | wider search |
+| `bayes.n_trials_dl` | 2–3 | **4** | wider search |
+| `dl.epochs` | 15 | **50** | longer schedule |
+| `dl.patience` | 3 | **8** | let early stopping do the choosing |
+| `bayes.log_trial_models` | false | **true** | every trial's model logged |
+
+Everything else — the split, the `*_known_future` contract, `max_tune_rows`, `max_train_windows`,
+`n_jobs` — is unchanged, so any difference in results is attributable to the budget.
+
+**Commands.** Because the config carries the experiment name and artifact directory, the same
+orchestrator runs v2:
+
+```bash
+PYTHON=./venv/bin/python CONFIG=configs/config_v2.yaml bash scripts/run_v1.sh
+```
+
+Or stage by stage, which is what was actually used here (short, resumable chunks are the practical
+mode on a memory-constrained box — §9.5):
+
+```bash
+export PYTHONPATH=src
+C=configs/config_v2.yaml
+
+# tuning - every trial logged to MLflow with params, train + validation metrics, and its model
+for m in lightgbm xgboost catboost; do
+  python -m demand_forecasting.tune_bayesian --config $C --model $m --n-trials 25
+done
+for m in lstm transformer tide tsmixer; do
+  python -m demand_forecasting.tune_dl --config $C --model $m --n-trials 4
+done
+
+# final training on the tuned hyperparameters
+for m in lightgbm xgboost catboost; do
+  python -m demand_forecasting.train_ml --config $C --model $m \
+    --params-json artifacts_v2/tuning/${m}_best_params.json
+done
+for m in lstm transformer; do
+  python -m demand_forecasting.train_dl --config $C --model $m \
+    --params-json artifacts_v2/tuning/${m}_best_params.json
+done
+for m in tide tsmixer; do
+  python -m demand_forecasting.train_darts --config $C --model $m \
+    --params-json artifacts_v2/tuning/${m}_best_params.json
+done
+
+# comparison, per-family champions, promotion, deliverable forecast
+python -m demand_forecasting.evaluate_compare    --config $C
+python -m demand_forecasting.report_best_models  --config $C
+python -m demand_forecasting.select_model        --config $C --name <champion> --family <ml|dl|darts> \
+  --model-type <champion> --artifact artifacts_v2/<champion>/model.<ext> \
+  --metrics artifacts_v2/<champion>/metrics.json
+python -m demand_forecasting.run_final_inference --config $C
+```
+
+**Files involved in a run**, in execution order:
+
+| Stage | Module | Reads | Writes |
+|---|---|---|---|
+| prepare | `prepare_dataset.py` | `data/raw/data.csv`, config | `data/processed/features.parquet` |
+| tune (tree) | `tune_bayesian.py` | raw, config | `tuning/<m>_best_params.json`, `_trials.csv`, `_study.db`, `_trial_NNN.joblib` |
+| tune (seq) | `tune_dl.py` | raw, config | same, `.pt` for trial models |
+| train | `train_ml.py` / `train_dl.py` / `train_darts.py` | raw, best params | `<m>/model.*`, `metrics.json`, `*_predictions.csv` |
+| compare | `evaluate_compare.py` | `*/metrics.json` | `reports/v1/model_comparison.csv` |
+| report | `report_best_models.py` | `*/metrics.json`, `test_predictions.csv` | `reports/v1/best_models*.csv` |
+| promote | `select_model.py` | comparison, metrics | `configs/model_registry.yaml` |
+| forecast | `run_final_inference.py` | registry/best models, raw | `reports/v1/forecast_store_sku*.csv`, `v1_store_sku_forecast_and_metrics.csv` |
+
+**The consolidated Store-SKU deliverable.**
+`reports/v1/store_sku_forecast_and_metrics.csv` joins the next-14-day forecast with how accurately
+that same series was predicted on the held-out test window — one row per (model, store, SKU), sorted
+worst-accuracy first:
+
+```text
+model,family,store_id,sku_id,forecast_total_units,forecast_mean_units,
+  test_rows,test_actual_units,test_wape,test_mape,test_mae,test_rmse,test_bias
+transformer,dl,STORE0002,SKU0015,160.71,11.48,14,102.0,0.6458,1.6020,4.7048,5.5968,0.6147
+```
+
+This is the file to hand a planner: it says both *what we forecast* and *how much to trust it for
+this specific Store-SKU*. The first row is instructive — the worst-forecast series is being
+over-predicted by 61% (`test_bias` +0.61), which is an actionable, series-level finding that the
+pooled 0.269 WAPE completely hides.
+
+**v2 tuning results (tree models, 25 trials each, 75 trials total).**
+
+Best validation WAPE from the search, measured on the 200k-row tuning cap:
+
+| model | v1 (12 trials) | v2 (25 trials) | change |
+|---|---|---|---|
+| lightgbm | 0.27668 | **0.27595** | −0.0007 |
+| xgboost | — | **0.27197** | — |
+| catboost | 0.27457 | **0.27457** | 0.0000 |
+
+Doubling the search budget moved LightGBM by 0.0007 WAPE and moved CatBoost **not at all** — TPE
+had already found the same optimum in 12 trials. This is worth stating plainly: **the search budget
+was not the binding constraint in v1.** It corroborates §9.9 — five architectures landing within
+0.007 of each other, no overfitting gap, and now a doubled search that changes nothing, all point
+at the feature set rather than the model or its hyperparameters as the ceiling.
+
+Every one of those 75 trials is in MLflow with its params, train and validation metrics, and its
+fitted model artifact (2.7–7.7 MB each), so the whole search is reproducible rather than just its
+winner.
+
+### 9.12 v1 vs v2: the budget was not the constraint
+
+Both versions trained end to end on the full data. Comparing the final models (all rows, not the
+tuning cap):
+
+| model | v1 val_wape | v2 val_wape | delta | v1 train_wape | v2 train_wape |
+|---|---|---|---|---|---|
+| catboost | 0.27193 | 0.27193 | **0.00000** | 0.2664 | 0.2664 |
+| lightgbm | 0.27208 | 0.27217 | +0.00009 | 0.2659 | 0.2637 |
+| xgboost | 0.27158 | 0.27213 | +0.00056 | 0.2644 | **0.2584** |
+| transformer | 0.26482 | 0.26542 | +0.00060 | – | – |
+| lstm | 0.26504 | 0.26617 | +0.00113 | – | – |
+
+**Not one model improved.** Every delta is zero or positive (worse), across both families and both
+kinds of extra budget. CatBoost converged to the *identical* configuration, so TPE had already found
+that optimum in 12 trials.
+
+Test-set numbers for the same models:
+
+| model | v1 test_wape | v2 test_wape | v1 test_mape | v2 test_mape |
+|---|---|---|---|---|
+| catboost | 0.2683 | 0.2683 | 0.5283 | 0.5283 |
+| lightgbm | 0.2709 | 0.2704 | 0.5329 | 0.5304 |
+| xgboost | 0.2706 | 0.2714 | 0.5226 | 0.5199 |
+| lstm | 0.2684 | **0.2673** | 0.5180 | **0.5134** |
+| transformer | 0.2690 | 0.2747 | 0.5447 | 0.5728 |
+
+The v2 LSTM posts the best test WAPE (0.2673) and best test MAPE (0.5134) of any model in either
+run, while ranking mid-table on validation — the validation/test ordering disagrees yet again.
+
+The XGBoost row is the instructive one. With 25 trials the search found a configuration that fits
+the training set noticeably better (train WAPE 0.2644 → 0.2584) while validating slightly *worse*
+(0.27158 → 0.27213). That is the hyperparameter search overfitting to the single validation window:
+given more attempts, TPE finds configurations that exploit the particular fortnight it is scored on.
+More search against one origin buys precision on that origin, not generalisation.
+
+The same held for the sequence models: raising `epochs` 15 → 50 with `patience` 8 did not improve
+LSTM either (0.26504 → 0.26617). Early stopping was already selecting its epoch well inside the v1
+budget, so the extra ceiling went unused.
+
+**What this settles.** Three independent lines of evidence now point the same way:
+
+1. five architectures land within 0.007 WAPE of each other (§9.7);
+2. train and validation WAPE are nearly identical, so nothing is overfitting the *data* (§9.7);
+3. doubling the search budget and tripling the epoch budget changes nothing (here).
+
+The ceiling is the information in the feature set, not the model family, its hyperparameters, or
+the optimisation budget. **v3 effort should go to features, the stockout target, and rolling-origin
+validation — not to bigger searches or bigger networks.** That also makes §9.10's ordering concrete:
+item 1 (rolling origins) and item 3 (more signal) are the ones that matter; item 7's "tune more"
+suggestions are now demonstrably low value.
+
+### 9.13 Final v2 standings, all six models
+
+All six trained end to end on the full data. Selection on validation WAPE, test evaluated once:
+
+| rank | model | family | train_wape | **val_wape** | val_mape | test_wape | test_mape | test_mae |
+|---|---|---|---|---|---|---|---|---|
+| 1 | **transformer** | dl | – | **0.2654** | 0.5336 | 0.2747 | 0.5728 | 17.14 |
+| 2 | lstm | dl | – | 0.2662 | 0.5340 | **0.2673** | **0.5134** | **16.68** |
+| 3 | catboost | ml | 0.2664 | 0.2719 | 0.5461 | 0.2683 | 0.5283 | 16.75 |
+| 4 | xgboost | ml | 0.2584 | 0.2721 | 0.5358 | 0.2714 | 0.5199 | 16.94 |
+| 5 | lightgbm | ml | 0.2637 | 0.2722 | 0.5447 | 0.2704 | 0.5304 | 16.88 |
+| 6 | tide | darts | – | 0.2762 | 0.5535 | 0.2694 | 0.5263 | 16.81 |
+
+Best per family: **transformer** (dl), **catboost** (ml), **tide** (darts) — all three promoted into
+`reports/v2/best_models.csv` and used for the final forecast.
+
+**The validation winner is the test loser.** Transformer ranks 1st on validation (0.2654) and
+**last but one on test (0.2747)** — the single worst test WAPE of the five non-darts models. LSTM
+ranks 2nd on validation and is best on test by every measure (WAPE 0.2673, MAPE 0.5134, MAE 16.68).
+The validation gap between them is 0.0008; the test gap is 0.0074 the other way.
+
+Across v1 and v2 the validation ranking has now failed to predict the test ranking **three times**:
+
+| run | validation winner | actual best on test |
+|---|---|---|
+| v1 | transformer (0.2648) | catboost (0.2683) |
+| v2 | transformer (0.2654) | lstm (0.2673) |
+| v1→v2 budget | 25 trials "should" beat 12 | 12 trials won or tied every time |
+
+That is the empirical case for Q1 stated three different ways. A single 14-day origin cannot rank
+models whose true differences are ~0.005 WAPE, and every conclusion drawn from it — including
+"the Transformer is our champion" — carries that caveat.
+
+**Spread across all six models is 0.2654 → 0.2762 on validation and 0.2673 → 0.2747 on test**, i.e.
+about 4% relative in both cases, across tree ensembles, recurrent, attention and MLP-mixer
+architectures. TiDE, the only model that never got a tuned search (its study failed on the Darts bug
+and it was trained with sensible defaults at a capped 12 epochs), still lands within 0.4% of the
+tuned Transformer on test. That is the strongest single statement in this whole report about where
+the remaining error lives.
+
+**A second Darts bug, found by running inference.** `train_darts` was fixed to skip series that end
+before the forecast origin (§9.7), but `inference_darts` iterates the *trained* key list and hit the
+same dead series:
+
+```text
+ValueError: Expected 14 future rows for series ('STORE0013', 'SKU0073'), found 0
+```
+
+A model legitimately trains on series that later go inactive; inference must drop them rather than
+fail the batch. `forecastable_keys()` now filters the trained keys to those the request actually
+supplies a full horizon for. With that, all three families forecast cleanly:
+
+```text
+transformer (dl)    -> 14,056 rows
+catboost    (ml)    -> 14,056 rows
+tide        (darts) -> 14,056 rows
+                       42,168 rows total, 1,004 series, 2024-01-01..2024-01-14
+```
+
+### 9.14 v2 outputs
+
+```text
+artifacts_v2/
+├── tuning/                      75 tree trial models + 3 study DBs + best params + trials CSVs
+├── lightgbm|xgboost|catboost/   model.joblib, metrics.json, {validation,test}_predictions.csv
+├── lstm|transformer/            model.pt, metrics.json, {validation,test}_predictions.csv
+└── tide/                        model.pt, metadata.joblib, metrics.json, predictions
+
+configs/model_registry_v2.yaml   promoted v2 champion (transformer)
+
+reports/
+├── v1/  … the v1 equivalents of everything below
+└── v2/
+    ├── best_models.csv                           champion per family
+    ├── all_models_metrics.csv
+    ├── best_models_test_predictions.csv
+    ├── best_models_per_series_metrics.csv
+    ├── best_models_per_horizon_metrics.csv
+    ├── best_models_pooled_vs_macro.csv
+    ├── forecast_store_sku.csv                    42,168-row Store-SKU forecast (3 champions)
+    ├── forecast_store_sku_wide.csv               one column per model
+    └── store_sku_forecast_and_metrics.csv        forecast + that series' test accuracy
+```
+
+v1 remains untouched in `artifacts/`, `reports/` and `configs/model_registry.yaml`, so the two runs
+can be compared at any time.
+
+MLflow experiments on DagsHub:
+
+```text
+fmcg-demand-forecasting-v1   62+ runs   12 tree trials/model, 2-3 sequence trials
+fmcg-demand-forecasting-v2   ~90 runs   25 tree trials/model, 2 sequence trials, every trial model logged
+```
+
+**A design fix this surfaced.** Final inference initially failed for the Transformer:
+
+```text
+ValueError: Config lookback does not match the trained checkpoint
+```
+
+The guard was right — the Transformer was trained with a **tuned lookback of 112** while
+`config.yaml` still said 56. But the conclusion was wrong: now that lookback is searched per model
+(§Q10), it is a property of the *artifact*, not of global config. `inference_dl` and
+`inference_darts` now take lookback from the checkpoint/metadata and still validate the feature
+contract and horizon strictly. Without this, any tuned sequence model would have been undeployable.

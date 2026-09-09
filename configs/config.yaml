@@ -96,11 +96,24 @@ training:
   # Can be temporarily restricted for debugging / fast experiments.
   max_train_rows: null
 
-  # Use all available CPU cores where supported.
-  n_jobs: -1
+  # Thread count for the tree libraries.
+  # -1 means "choose automatically", which resolves to half the available CPUs.
+  # Do NOT set this to the full CPU count: the OpenMP backends used by LightGBM,
+  # XGBoost and CatBoost collapse into spin-wait contention when they saturate the
+  # machine (measured 0.31s vs 235s for the same LightGBM fit on a 16-CPU box).
+  # Each worker thread also carries its own histogram buffers, so a lower count reduces peak
+  # memory as well; 4 is a good balance on an 11.9 GB box.
+  n_jobs: 4
 
-  # MLflow experiment name.
-  mlflow_experiment: fmcg-demand-forecasting
+  # MLflow experiment name. Logged to DagsHub when .env supplies MLFLOW_TRACKING_URI.
+  mlflow_experiment: fmcg-demand-forecasting-v1
+
+  # Validation metric used to rank models and pick the champion.
+  # One of: wape, mape, mae, rmse, smape.
+  # wape is the more robust choice on this data because MAPE divides by each actual and
+  # ~1.5% of rows have demand below 5 units, where a small absolute miss becomes a huge
+  # percentage. Both are always computed and logged; this only selects the ranking key.
+  selection_metric: wape
 
   # Local output directory for trained artifacts.
   save_dir: artifacts
@@ -108,12 +121,30 @@ training:
 
 bayes:
 
-  # Number of Bayesian/Optuna trials PER model.
+  # Number of Bayesian/Optuna trials PER tree model.
   # 25 is reasonable initially; increase for final experiments.
   n_trials: 25
 
+  # Trials per sequence model (lstm/transformer/tide/tsmixer). Each trial trains a network,
+  # so these are far more expensive than a tree trial - keep the count low.
+  n_trials_dl: 10
+
+  # Row cap for tuning only; final training uses every eligible row. Tuning needs enough data
+  # to rank configurations, not to squeeze out the last of the accuracy, and a smaller cap
+  # keeps peak memory comfortably inside a modest box.
+  max_tune_rows: 200000
+
   # null means there is no global timeout.
   timeout_seconds: null
+
+  # Validation metric each Optuna trial minimises. Keep aligned with
+  # training.selection_metric so tuning optimises what selection ranks on.
+  objective_metric: wape
+
+  # Persist every trial's fitted model as an MLflow artifact, not just the best one.
+  # Params and metrics for all trials are always logged; this controls the model binaries,
+  # which are large - expect a few GB of uploads across a full sweep.
+  log_trial_models: true
 
   tuning_models:
     - lightgbm
@@ -133,10 +164,10 @@ ml:
 dl:
 
   batch_size: 256
-  epochs: 30
+  epochs: 15
 
   # Stop if validation loss fails to improve for this many epochs.
-  patience: 5
+  patience: 3
 
   learning_rate: 0.001
   weight_decay: 0.0001
@@ -157,6 +188,13 @@ dl:
 
   # DataLoader workers.
   num_workers: 4
+
+  # Cap on training windows per fit. The full data yields ~1.0M windows, and consecutive
+  # windows share 55 of their 56 history days, so the set is highly redundant: an unbounded
+  # epoch takes ~6.6 minutes and is dominated by per-sample pandas indexing rather than GPU
+  # work. Subsampling (seeded, every series still represented) keeps training tractable.
+  # null disables the cap. Validation/test/inference windows are never subsampled.
+  max_train_windows: 150000
 
 # hierarchical aggregation
 hierarchy:

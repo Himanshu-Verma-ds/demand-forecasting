@@ -22,9 +22,7 @@ def validate_metadata(metadata: dict, cfg: dict, model_type: str) -> None:
     if metadata["model_type"] != model_type:
         raise ValueError(f"Model type mismatch: metadata={metadata['model_type']} requested={model_type}")
 
-    if int(metadata["lookback"]) != int(cfg["data"]["lookback"]):
-        raise ValueError("Configured lookback does not match trained model lookback")
-
+    # Lookback is tuned per model, so the saved metadata is authoritative rather than config.
     if int(metadata["horizon"]) != int(cfg["data"]["horizon"]):
         raise ValueError("Configured horizon does not match trained model horizon")
 
@@ -74,8 +72,24 @@ def prepare_future(future: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     return add_calendar_features(out, date_col=date_col)
 
 
-def validate_future_coverage(history: pd.DataFrame, future: pd.DataFrame, metadata: dict) -> None:
-    """Require one complete contiguous forecast horizon for every trained Store-SKU series."""
+def forecastable_keys(future: pd.DataFrame, metadata: dict) -> list:
+    """Trained series that the request actually supplies a full horizon for.
+
+    A model trains on every series with enough history, including ones that later went
+    inactive (this dataset has one ending 2022-09-12). Those cannot be forecast and must be
+    dropped rather than failing the whole batch.
+    """
+    series_cols = metadata["series_cols"]
+    horizon = int(metadata["horizon"])
+
+    counts = future.groupby(series_cols, dropna=False).size()
+    available = {key for key, n in counts.items() if n == horizon}
+
+    return [key for key in metadata["keys"] if (key if isinstance(key, tuple) else (key,)) in available]
+
+
+def validate_future_coverage(history: pd.DataFrame, future: pd.DataFrame, metadata: dict, keys: list) -> None:
+    """Require one complete contiguous forecast horizon for each requested series."""
     date_col = metadata["date_col"]
     series_cols = metadata["series_cols"]
     horizon = int(metadata["horizon"])
@@ -83,7 +97,7 @@ def validate_future_coverage(history: pd.DataFrame, future: pd.DataFrame, metada
     history_end = pd.to_datetime(history[date_col]).max()
     expected_dates = pd.date_range(history_end + pd.Timedelta(days=1), periods=horizon, freq="D")
 
-    for key in metadata["keys"]:
+    for key in keys:
         key_values = key if isinstance(key, tuple) else (key,)
         mask = pd.Series(True, index=future.index)
 
@@ -100,7 +114,7 @@ def validate_future_coverage(history: pd.DataFrame, future: pd.DataFrame, metada
             raise ValueError(f"Future dates for series {key} do not match the required forecast horizon")
 
 
-def build_inference_series(history: pd.DataFrame, future: pd.DataFrame, metadata: dict):
+def build_inference_series(history: pd.DataFrame, future: pd.DataFrame, metadata: dict, keys_to_use: list | None = None):
     """Build historical targets, past covariates, and horizon-extended future covariates for Darts."""
     date_col = metadata["date_col"]
     series_cols = metadata["series_cols"]
@@ -114,7 +128,7 @@ def build_inference_series(history: pd.DataFrame, future: pd.DataFrame, metadata
     future_covariates = []
     keys = []
 
-    for key in metadata["keys"]:
+    for key in (keys_to_use if keys_to_use is not None else metadata["keys"]):
         key_values = key if isinstance(key, tuple) else (key,)
 
         hist_mask = pd.Series(True, index=history.index)
@@ -210,12 +224,18 @@ def forecast(model_type: str, model_path: str, metadata_path: str, history: pd.D
 
     future = prepare_future(future, cfg)
 
-    validate_future_coverage(history, future, metadata)
+    requested_keys = forecastable_keys(future, metadata)
+
+    if not requested_keys:
+        raise ValueError("No trained series has a complete forecast horizon in the request")
+
+    validate_future_coverage(history, future, metadata, requested_keys)
 
     series, past_covariates, future_covariates, keys = build_inference_series(
         history,
         future,
         metadata,
+        keys_to_use=requested_keys,
     )
 
     model = load_model(model_type, model_path)
@@ -237,7 +257,7 @@ def forecast(model_type: str, model_path: str, metadata_path: str, history: pd.D
     rows = []
 
     for key, prediction_series in zip(keys, predictions):
-        pred_df = prediction_series.pd_dataframe().reset_index()
+        pred_df = prediction_series.to_dataframe().reset_index()
         prediction_col = [column for column in pred_df.columns if column != date_col][0]
         pred_df = pred_df.rename(columns={prediction_col: "prediction"})
         pred_df["prediction"] = pred_df["prediction"].astype(float).clip(lower=0.0)

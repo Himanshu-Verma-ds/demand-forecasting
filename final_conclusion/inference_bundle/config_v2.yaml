@@ -1,0 +1,103 @@
+# v2 experiment configuration.
+#
+# Same data, features and leakage contract as v1 - only the search budget and training
+# schedule change, so v1 and v2 remain directly comparable.
+#
+#   PYTHON=./venv/bin/python CONFIG=configs/config_v2.yaml bash scripts/run_v1.sh
+#
+# Differences from configs/config.yaml:
+#   - separate MLflow experiment and artifact directory, so v1 is never overwritten
+#   - tree trials 12 -> 25, sequence trials 3 -> 4
+#   - epochs 15 -> 50 with patience 8 (early stopping still chooses the epoch)
+#   - every trial's model is logged as an MLflow artifact
+
+logging:
+  dir: logs
+  level: INFO
+  console: true
+  backup_count: 14
+  utc: false
+
+project:
+  name: fmcg_demand_forecasting
+  random_seed: 42
+
+data:
+  raw_path: data/raw/data.csv
+  date_col: date
+  target_col: units_sold
+  series_cols:
+    - store_id
+    - sku_id
+  horizon: 14
+  # Starting point only; tune_dl searches lookback per model.
+  lookback: 56
+
+split:
+  validation_days: 14
+  test_days: 14
+
+features:
+  demand_lags: [1, 7, 14, 28]
+  demand_roll_windows: [7, 14, 28]
+  stock_roll_window: 28
+  stockout_target_mode: none
+  stockout_imputation_window: 56
+  stockout_imputation_min_periods: 7
+  stockout_percentage_uplift: 0.50
+  stockout_sample_weight: 0.50
+  stockout_lags: [1, 7, 14]
+  promo_known_future: true
+  price_known_future: false
+  weather_known_future: false
+
+training:
+  max_train_rows: null
+  n_jobs: 4
+  mlflow_experiment: fmcg-demand-forecasting-v2
+  save_dir: artifacts_v2
+  selection_metric: wape
+
+bayes:
+  n_trials: 25
+  n_trials_dl: 4
+  timeout_seconds: null
+  objective_metric: wape
+  max_tune_rows: 200000
+  log_trial_models: true
+  tuning_models:
+    - lightgbm
+    - xgboost
+    - catboost
+
+ml:
+  models:
+    - lightgbm
+    - xgboost
+    - catboost
+
+dl:
+  batch_size: 256
+  epochs: 50
+  patience: 8
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  hidden_size: 128
+  embedding_dim: 16
+  num_layers: 2
+  dropout: 0.15
+  transformer_d_model: 128
+  transformer_heads: 4
+  transformer_layers: 3
+  num_workers: 4
+  max_train_windows: 150000
+
+hierarchy:
+  share_window_days: 56
+  share_target_col: units_sold
+  exclude_stockouts_for_shares: true
+
+monitoring:
+  psi_warning: 0.10
+  psi_alert: 0.25
+  promo_rate_relative_change_alert: 0.30

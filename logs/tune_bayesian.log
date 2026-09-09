@@ -1,0 +1,1646 @@
+2026-09-08 18:55:42 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "model": "lightgbm",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T18:55:42.695466+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 18:55:42 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": false,
+    "n_trials": 25,
+    "n_trials_dl": 10,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 15,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 3,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v1",
+    "n_jobs": -1,
+    "save_dir": "artifacts",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 18:55:52 | INFO     | demand_forecasting.tune_bayesian | Tuning setup:
+{
+  "feature_count": 52,
+  "log_trial_models": false,
+  "model": "lightgbm",
+  "n_trials": 20,
+  "objective_metric": "wape",
+  "timeout_seconds": null,
+  "train_row_cap": 400000,
+  "train_rows": 400000,
+  "validation_rows": 14056,
+  "validation_window": "2023-12-04..2023-12-17"
+}
+2026-09-08 18:57:45 | INFO     | demand_forecasting.tune_bayesian | Trial 0 val_wape=0.278148 (wape=0.278148 mape=0.552234 mae=17.2733) params={'n_estimators': 637, 'learning_rate': 0.13125830316209655, 'num_leaves': 195, 'max_depth': 10, 'min_child_samples': 24, 'subsample': 0.7467983561008608, 'colsample_bytree': 0.7174250836504598, 'reg_lambda': 2.9154431891537547}
+2026-09-08 18:59:04 | INFO     | demand_forecasting.tune_bayesian | Trial 1 val_wape=0.277213 (wape=0.277213 mape=0.545409 mae=17.2152) params={'n_estimators': 841, 'learning_rate': 0.06803900745073706, 'num_leaves': 35, 'max_depth': 14, 'min_child_samples': 85, 'subsample': 0.7637017332034828, 'colsample_bytree': 0.7545474901621302, 'reg_lambda': 0.00541524411940254}
+2026-09-08 19:00:37 | INFO     | demand_forecasting.tune_bayesian | Trial 2 val_wape=0.275816 (wape=0.275816 mape=0.545157 mae=17.1285) params={'n_estimators': 574, 'learning_rate': 0.04141536110538596, 'num_leaves': 128, 'max_depth': 7, 'min_child_samples': 65, 'subsample': 0.7418481581956126, 'colsample_bytree': 0.7876433945605654, 'reg_lambda': 0.029204338471814112}
+2026-09-08 19:02:38 | INFO     | demand_forecasting.tune_bayesian | Trial 3 val_wape=0.277494 (wape=0.277494 mape=0.547584 mae=17.2327) params={'n_estimators': 710, 'learning_rate': 0.0838375512850209, 'num_leaves': 75, 'max_depth': 10, 'min_child_samples': 63, 'subsample': 0.7139351238159993, 'colsample_bytree': 0.8822634555704315, 'reg_lambda': 0.004809461967501573}
+2026-09-08 19:04:22 | INFO     | demand_forecasting.tune_bayesian | Trial 4 val_wape=0.277176 (wape=0.277176 mape=0.549208 mae=17.2129) params={'n_estimators': 358, 'learning_rate': 0.13060986669773664, 'num_leaves': 248, 'max_depth': 13, 'min_child_samples': 37, 'subsample': 0.7293016342019151, 'colsample_bytree': 0.905269907953647, 'reg_lambda': 0.057624872164786026}
+2026-09-08 19:05:43 | INFO     | demand_forecasting.tune_bayesian | Trial 5 val_wape=0.276681 (wape=0.276681 mape=0.549469 mae=17.1822) params={'n_estimators': 409, 'learning_rate': 0.03822726574649208, 'num_leaves': 38, 'max_depth': 14, 'min_child_samples': 33, 'subsample': 0.8987566853061946, 'colsample_bytree': 0.7935133228268233, 'reg_lambda': 0.12030178871154672}
+2026-09-08 19:07:44 | INFO     | demand_forecasting.tune_bayesian | Trial 6 val_wape=0.274863 (wape=0.274863 mape=0.538930 mae=17.0693) params={'n_estimators': 792, 'learning_rate': 0.016497027917250065, 'num_leaves': 249, 'max_depth': 12, 'min_child_samples': 95, 'subsample': 0.9684482051282947, 'colsample_bytree': 0.8793699936433255, 'reg_lambda': 4.869640941520899}
+2026-09-08 19:09:09 | INFO     | demand_forecasting.tune_bayesian | Trial 7 val_wape=0.277777 (wape=0.277777 mape=0.551291 mae=17.2502) params={'n_estimators': 379, 'learning_rate': 0.017001754132211097, 'num_leaves': 41, 'max_depth': 8, 'min_child_samples': 45, 'subsample': 0.7814047095321688, 'colsample_bytree': 0.9486212527455788, 'reg_lambda': 0.026730883107816707}
+2026-09-08 19:10:31 | INFO     | demand_forecasting.tune_bayesian | Trial 8 val_wape=0.275841 (wape=0.275841 mape=0.548385 mae=17.1300) params={'n_estimators': 553, 'learning_rate': 0.043477055106943, 'num_leaves': 62, 'max_depth': 13, 'min_child_samples': 16, 'subsample': 0.9960660809801551, 'colsample_bytree': 0.9316734307889972, 'reg_lambda': 0.0062353771356731605}
+2026-09-08 19:11:55 | INFO     | demand_forecasting.tune_bayesian | Trial 9 val_wape=0.275857 (wape=0.275857 mape=0.545756 mae=17.1310) params={'n_estimators': 304, 'learning_rate': 0.09100328259258599, 'num_leaves': 190, 'max_depth': 12, 'min_child_samples': 80, 'subsample': 0.7222133955202271, 'colsample_bytree': 0.8075397185632818, 'reg_lambda': 0.0029072088906598446}
+2026-09-08 19:17:02 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "model": "lightgbm",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T19:17:02.967045+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 19:17:02 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": false,
+    "n_trials": 25,
+    "n_trials_dl": 10,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 15,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 3,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v1",
+    "n_jobs": -1,
+    "save_dir": "artifacts",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 19:21:53 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "model": "lightgbm",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T19:21:53.936018+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 19:21:53 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": false,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 10,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 15,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 3,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v1",
+    "n_jobs": 4,
+    "save_dir": "artifacts",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 19:23:08 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "model": "lightgbm",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T19:23:08.370368+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 19:23:08 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": false,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 10,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 15,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 3,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v1",
+    "n_jobs": 4,
+    "save_dir": "artifacts",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 19:23:17 | INFO     | demand_forecasting.tune_bayesian | Tuning setup:
+{
+  "feature_count": 52,
+  "log_trial_models": false,
+  "model": "lightgbm",
+  "n_trials": 4,
+  "objective_metric": "wape",
+  "timeout_seconds": null,
+  "train_row_cap": 200000,
+  "train_rows": 200000,
+  "validation_rows": 14056,
+  "validation_window": "2023-12-04..2023-12-17"
+}
+2026-09-08 19:24:20 | INFO     | demand_forecasting.tune_bayesian | Trial 0 val_wape=0.279542 (wape=0.279542 mape=0.548507 mae=17.3599) params={'n_estimators': 637, 'learning_rate': 0.13125830316209655, 'num_leaves': 195, 'max_depth': 10, 'min_child_samples': 24, 'subsample': 0.7467983561008608, 'colsample_bytree': 0.7174250836504598, 'reg_lambda': 2.9154431891537547}
+2026-09-08 19:25:02 | INFO     | demand_forecasting.tune_bayesian | Trial 1 val_wape=0.277419 (wape=0.277419 mape=0.544610 mae=17.2280) params={'n_estimators': 841, 'learning_rate': 0.06803900745073706, 'num_leaves': 35, 'max_depth': 14, 'min_child_samples': 85, 'subsample': 0.7637017332034828, 'colsample_bytree': 0.7545474901621302, 'reg_lambda': 0.00541524411940254}
+2026-09-08 19:25:38 | INFO     | demand_forecasting.tune_bayesian | Trial 2 val_wape=0.277745 (wape=0.277745 mape=0.547270 mae=17.2483) params={'n_estimators': 574, 'learning_rate': 0.04141536110538596, 'num_leaves': 128, 'max_depth': 7, 'min_child_samples': 65, 'subsample': 0.7418481581956126, 'colsample_bytree': 0.7876433945605654, 'reg_lambda': 0.029204338471814112}
+2026-09-08 19:26:14 | INFO     | demand_forecasting.tune_bayesian | Trial 3 val_wape=0.278655 (wape=0.278655 mape=0.549289 mae=17.3048) params={'n_estimators': 710, 'learning_rate': 0.0838375512850209, 'num_leaves': 75, 'max_depth': 10, 'min_child_samples': 63, 'subsample': 0.7139351238159993, 'colsample_bytree': 0.8822634555704315, 'reg_lambda': 0.004809461967501573}
+2026-09-08 19:26:18 | INFO     | demand_forecasting.tune_bayesian | Best trial:
+{
+  "best_params": {
+    "colsample_bytree": 0.7545474901621302,
+    "learning_rate": 0.06803900745073706,
+    "max_depth": 14,
+    "min_child_samples": 85,
+    "n_estimators": 841,
+    "num_leaves": 35,
+    "reg_lambda": 0.00541524411940254,
+    "subsample": 0.7637017332034828
+  },
+  "best_params_path": "artifacts/tuning/lightgbm_best_params.json",
+  "best_trial_metrics": {
+    "bias": -0.006618254480100322,
+    "mae": 17.22801761680527,
+    "mape": 0.5446103654684905,
+    "mape_coverage": 0.9965850882185544,
+    "rmse": 26.5851149995346,
+    "smape": 0.2981550382248416,
+    "wape": 0.277418899706854
+  },
+  "best_trial_number": 1,
+  "best_validation_wape": 0.277418899706854,
+  "completed_trials": 4,
+  "mlflow_parent_run_id": "efaedfc840004932aef1afa3f7150d58",
+  "model": "lightgbm",
+  "objective_metric": "wape",
+  "trials_path": "artifacts/tuning/lightgbm_trials.csv"
+}
+2026-09-08 19:26:49 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "model": "lightgbm",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T19:26:49.342208+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 19:26:49 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": false,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 10,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 15,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 3,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v1",
+    "n_jobs": 4,
+    "save_dir": "artifacts",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 19:27:03 | INFO     | demand_forecasting.tune_bayesian | Tuning setup:
+{
+  "feature_count": 52,
+  "log_trial_models": false,
+  "model": "lightgbm",
+  "n_trials": 12,
+  "objective_metric": "wape",
+  "timeout_seconds": null,
+  "train_row_cap": 200000,
+  "train_rows": 200000,
+  "validation_rows": 14056,
+  "validation_window": "2023-12-04..2023-12-17"
+}
+2026-09-08 19:27:09 | INFO     | demand_forecasting.tune_bayesian | Resuming study: 4 trials already complete, 8 remaining
+2026-09-08 19:27:53 | INFO     | demand_forecasting.tune_bayesian | Trial 4 val_wape=0.279542 (wape=0.279542 mape=0.548507 mae=17.3599) params={'n_estimators': 637, 'learning_rate': 0.13125830316209655, 'num_leaves': 195, 'max_depth': 10, 'min_child_samples': 24, 'subsample': 0.7467983561008608, 'colsample_bytree': 0.7174250836504598, 'reg_lambda': 2.9154431891537547}
+2026-09-08 19:28:45 | INFO     | demand_forecasting.tune_bayesian | Trial 5 val_wape=0.277419 (wape=0.277419 mape=0.544610 mae=17.2280) params={'n_estimators': 841, 'learning_rate': 0.06803900745073706, 'num_leaves': 35, 'max_depth': 14, 'min_child_samples': 85, 'subsample': 0.7637017332034828, 'colsample_bytree': 0.7545474901621302, 'reg_lambda': 0.00541524411940254}
+2026-09-08 19:29:36 | INFO     | demand_forecasting.tune_bayesian | Trial 6 val_wape=0.277745 (wape=0.277745 mape=0.547270 mae=17.2483) params={'n_estimators': 574, 'learning_rate': 0.04141536110538596, 'num_leaves': 128, 'max_depth': 7, 'min_child_samples': 65, 'subsample': 0.7418481581956126, 'colsample_bytree': 0.7876433945605654, 'reg_lambda': 0.029204338471814112}
+2026-09-08 19:30:15 | INFO     | demand_forecasting.tune_bayesian | Trial 7 val_wape=0.278655 (wape=0.278655 mape=0.549289 mae=17.3048) params={'n_estimators': 710, 'learning_rate': 0.0838375512850209, 'num_leaves': 75, 'max_depth': 10, 'min_child_samples': 63, 'subsample': 0.7139351238159993, 'colsample_bytree': 0.8822634555704315, 'reg_lambda': 0.004809461967501573}
+2026-09-08 19:30:49 | INFO     | demand_forecasting.tune_bayesian | Trial 8 val_wape=0.282511 (wape=0.282511 mape=0.538522 mae=17.5442) params={'n_estimators': 358, 'learning_rate': 0.13060986669773664, 'num_leaves': 248, 'max_depth': 13, 'min_child_samples': 37, 'subsample': 0.7293016342019151, 'colsample_bytree': 0.905269907953647, 'reg_lambda': 0.057624872164786026}
+2026-09-08 19:31:25 | INFO     | demand_forecasting.tune_bayesian | Trial 9 val_wape=0.276677 (wape=0.276677 mape=0.545672 mae=17.1819) params={'n_estimators': 409, 'learning_rate': 0.03822726574649208, 'num_leaves': 38, 'max_depth': 14, 'min_child_samples': 33, 'subsample': 0.8987566853061946, 'colsample_bytree': 0.7935133228268233, 'reg_lambda': 0.12030178871154672}
+2026-09-08 19:32:00 | INFO     | demand_forecasting.tune_bayesian | Trial 10 val_wape=0.277766 (wape=0.277766 mape=0.547610 mae=17.2496) params={'n_estimators': 411, 'learning_rate': 0.11173825558194052, 'num_leaves': 36, 'max_depth': 13, 'min_child_samples': 12, 'subsample': 0.9291394062920324, 'colsample_bytree': 0.8326269850871965, 'reg_lambda': 0.12279488324259344}
+2026-09-08 19:32:38 | INFO     | demand_forecasting.tune_bayesian | Trial 11 val_wape=0.276937 (wape=0.276937 mape=0.541963 mae=17.1981) params={'n_estimators': 496, 'learning_rate': 0.030367443771576373, 'num_leaves': 142, 'max_depth': 14, 'min_child_samples': 33, 'subsample': 0.9820608266395309, 'colsample_bytree': 0.7053879571046263, 'reg_lambda': 0.5097178838105452}
+2026-09-08 19:32:43 | INFO     | demand_forecasting.tune_bayesian | Best trial:
+{
+  "best_params": {
+    "colsample_bytree": 0.7935133228268233,
+    "learning_rate": 0.03822726574649208,
+    "max_depth": 14,
+    "min_child_samples": 33,
+    "n_estimators": 409,
+    "num_leaves": 38,
+    "reg_lambda": 0.12030178871154672,
+    "subsample": 0.8987566853061946
+  },
+  "best_params_path": "artifacts/tuning/lightgbm_best_params.json",
+  "best_trial_metrics": {
+    "bias": -0.0062558851164820385,
+    "mae": 17.181920999969062,
+    "mape": 0.5456722074447524,
+    "mape_coverage": 0.9965850882185544,
+    "rmse": 26.563164513587793,
+    "smape": 0.2973759221259375,
+    "wape": 0.27667661623539785
+  },
+  "best_trial_number": 9,
+  "best_validation_wape": 0.27667661623539785,
+  "completed_trials": 12,
+  "mlflow_parent_run_id": "6b62d047fb974ee1b3260d4daf66ad1e",
+  "model": "lightgbm",
+  "objective_metric": "wape",
+  "trials_path": "artifacts/tuning/lightgbm_trials.csv"
+}
+2026-09-08 19:33:13 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "model": "xgboost",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T19:33:13.023946+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 19:33:13 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": false,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 10,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 15,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 3,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v1",
+    "n_jobs": 4,
+    "save_dir": "artifacts",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 19:33:24 | INFO     | demand_forecasting.tune_bayesian | Tuning setup:
+{
+  "feature_count": 52,
+  "log_trial_models": false,
+  "model": "xgboost",
+  "n_trials": 12,
+  "objective_metric": "wape",
+  "timeout_seconds": null,
+  "train_row_cap": 200000,
+  "train_rows": 200000,
+  "validation_rows": 14056,
+  "validation_window": "2023-12-04..2023-12-17"
+}
+2026-09-08 19:34:29 | INFO     | demand_forecasting.tune_bayesian | Trial 0 val_wape=0.291819 (wape=0.291819 mape=0.544604 mae=18.1223) params={'n_estimators': 637, 'learning_rate': 0.13125830316209655, 'max_depth': 10, 'min_child_weight': 6.009974718380312, 'subsample': 0.7468055921327309, 'colsample_bytree': 0.7467983561008608, 'reg_lambda': 0.0017775399007348214}
+2026-09-08 19:35:23 | INFO     | demand_forecasting.tune_bayesian | Trial 1 val_wape=0.282343 (wape=0.282343 mape=0.542274 mae=17.5338) params={'n_estimators': 1080, 'learning_rate': 0.05092911283433821, 'max_depth': 10, 'min_child_weight': 1.0636066512540283, 'subsample': 0.9909729556485982, 'colsample_bytree': 0.9497327922401265, 'reg_lambda': 0.008189867664214782}
+2026-09-08 19:35:53 | INFO     | demand_forecasting.tune_bayesian | Trial 2 val_wape=0.273937 (wape=0.273937 mape=0.543045 mae=17.0118) params={'n_estimators': 463, 'learning_rate': 0.016432378919707624, 'max_depth': 6, 'min_child_weight': 4.816414530907083, 'subsample': 0.8295835055926347, 'colsample_bytree': 0.7873687420594125, 'reg_lambda': 0.42815168066077464}
+2026-09-08 19:36:32 | INFO     | demand_forecasting.tune_bayesian | Trial 3 val_wape=0.273165 (wape=0.273165 mape=0.542445 mae=16.9638) params={'n_estimators': 425, 'learning_rate': 0.022059149678071027, 'max_depth': 7, 'min_child_weight': 3.920673972242136, 'subsample': 0.935552788417904, 'colsample_bytree': 0.7599021346475079, 'reg_lambda': 0.16283124535115095}
+2026-09-08 19:37:14 | INFO     | demand_forecasting.tune_bayesian | Trial 4 val_wape=0.274525 (wape=0.274525 mape=0.537618 mae=17.0483) params={'n_estimators': 833, 'learning_rate': 0.011340440501807348, 'max_depth': 9, 'min_child_weight': 1.6666983286066417, 'subsample': 0.7195154778955838, 'colsample_bytree': 0.984665661176, 'reg_lambda': 14.230243744913723}
+2026-09-08 19:37:54 | INFO     | demand_forecasting.tune_bayesian | Trial 5 val_wape=0.275911 (wape=0.275911 mape=0.550822 mae=17.1344) params={'n_estimators': 1028, 'learning_rate': 0.022816739880816207, 'max_depth': 4, 'min_child_weight': 7.766184280392884, 'subsample': 0.8320457481218804, 'colsample_bytree': 0.7366114704534336, 'reg_lambda': 0.13482509766281273}
+2026-09-08 19:38:26 | INFO     | demand_forecasting.tune_bayesian | Trial 6 val_wape=0.278975 (wape=0.278975 mape=0.549502 mae=17.3247) params={'n_estimators': 330, 'learning_rate': 0.1173393765991262, 'max_depth': 6, 'min_child_weight': 7.277150634170934, 'subsample': 0.7935133228268233, 'colsample_bytree': 0.8560204063533432, 'reg_lambda': 0.22460390897586935}
+2026-09-08 19:39:03 | INFO     | demand_forecasting.tune_bayesian | Trial 7 val_wape=0.282397 (wape=0.282397 mape=0.543610 mae=17.5371) params={'n_estimators': 466, 'learning_rate': 0.13814017620274424, 'max_depth': 10, 'min_child_weight': 16.684619386293466, 'subsample': 0.9684482051282947, 'colsample_bytree': 0.8793699936433255, 'reg_lambda': 9.225899874801096}
+2026-09-08 19:40:04 | INFO     | demand_forecasting.tune_bayesian | Trial 8 val_wape=0.277084 (wape=0.277084 mape=0.547626 mae=17.2072) params={'n_estimators': 379, 'learning_rate': 0.017001754132211097, 'max_depth': 4, 'min_child_weight': 2.6501137707458966, 'subsample': 0.8166031869068446, 'colsample_bytree': 0.7814047095321688, 'reg_lambda': 3.6679624869306977}
+2026-09-08 19:41:59 | INFO     | demand_forecasting.tune_bayesian | Trial 9 val_wape=0.273303 (wape=0.273303 mape=0.537779 mae=16.9724) params={'n_estimators': 621, 'learning_rate': 0.02139954903017622, 'max_depth': 8, 'min_child_weight': 1.5252697030515172, 'subsample': 0.9406590942262119, 'colsample_bytree': 0.7223651931039312, 'reg_lambda': 17.564278579581362}
+2026-09-08 19:42:33 | INFO     | demand_forecasting.tune_bayesian | Trial 10 val_wape=0.273549 (wape=0.273549 mape=0.541158 mae=16.9877) params={'n_estimators': 452, 'learning_rate': 0.015500188286754847, 'max_depth': 7, 'min_child_weight': 4.457020339008881, 'subsample': 0.9782274389895966, 'colsample_bytree': 0.7977858301106499, 'reg_lambda': 0.013153665221476}
+2026-09-08 19:43:17 | INFO     | demand_forecasting.tune_bayesian | Trial 11 val_wape=0.274086 (wape=0.274086 mape=0.537031 mae=17.0210) params={'n_estimators': 701, 'learning_rate': 0.026016665999482057, 'max_depth': 10, 'min_child_weight': 2.475796591337898, 'subsample': 0.8903170572658162, 'colsample_bytree': 0.7601847700354765, 'reg_lambda': 12.562804806417093}
+2026-09-08 19:43:24 | INFO     | demand_forecasting.tune_bayesian | Best trial:
+{
+  "best_params": {
+    "colsample_bytree": 0.7599021346475079,
+    "learning_rate": 0.022059149678071027,
+    "max_depth": 7,
+    "min_child_weight": 3.920673972242136,
+    "n_estimators": 425,
+    "reg_lambda": 0.16283124535115095,
+    "subsample": 0.935552788417904
+  },
+  "best_params_path": "artifacts/tuning/xgboost_best_params.json",
+  "best_trial_metrics": {
+    "bias": -0.00012295581969669795,
+    "mae": 16.963823503367795,
+    "mape": 0.5424450708483725,
+    "mape_coverage": 0.9965850882185544,
+    "rmse": 25.975353742460374,
+    "smape": 0.29614462444153794,
+    "wape": 0.2731646412141439
+  },
+  "best_trial_number": 3,
+  "best_validation_wape": 0.2731646412141439,
+  "completed_trials": 12,
+  "mlflow_parent_run_id": "f2babc4a7c99437fb625e319ae22428d",
+  "model": "xgboost",
+  "objective_metric": "wape",
+  "trials_path": "artifacts/tuning/xgboost_trials.csv"
+}
+2026-09-08 19:50:30 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "model": "catboost",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T19:50:30.820931+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 19:50:30 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": false,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 10,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 15,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 3,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v1",
+    "n_jobs": 4,
+    "save_dir": "artifacts",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 19:50:44 | INFO     | demand_forecasting.tune_bayesian | Tuning setup:
+{
+  "feature_count": 52,
+  "log_trial_models": false,
+  "model": "catboost",
+  "n_trials": 12,
+  "objective_metric": "wape",
+  "timeout_seconds": null,
+  "train_row_cap": 200000,
+  "train_rows": 200000,
+  "validation_rows": 14056,
+  "validation_window": "2023-12-04..2023-12-17"
+}
+2026-09-08 19:51:48 | INFO     | demand_forecasting.tune_bayesian | Trial 0 val_wape=0.278508 (wape=0.278508 mape=0.544502 mae=17.2957) params={'iterations': 637, 'learning_rate': 0.13125830316209655, 'depth': 9, 'l2_leaf_reg': 6.009974718380312, 'random_strength': 0.31203728088487304}
+2026-09-08 19:52:38 | INFO     | demand_forecasting.tune_bayesian | Trial 1 val_wape=0.279118 (wape=0.279118 mape=0.541817 mae=17.3335) params={'iterations': 440, 'learning_rate': 0.011703388679635262, 'depth': 10, 'l2_leaf_reg': 6.054365855469246, 'random_strength': 1.416145155592091}
+2026-09-08 19:53:17 | INFO     | demand_forecasting.tune_bayesian | Trial 2 val_wape=0.276921 (wape=0.276921 mape=0.542493 mae=17.1971) params={'iterations': 318, 'learning_rate': 0.13826189316223852, 'depth': 9, 'l2_leaf_reg': 1.8891200276189386, 'random_strength': 0.36364993441420124}
+2026-09-08 19:53:57 | INFO     | demand_forecasting.tune_bayesian | Trial 3 val_wape=0.275501 (wape=0.275501 mape=0.547509 mae=17.1089) params={'iterations': 465, 'learning_rate': 0.02279379523765072, 'depth': 8, 'l2_leaf_reg': 3.6473162849112093, 'random_strength': 0.5824582803960838}
+2026-09-08 19:54:48 | INFO     | demand_forecasting.tune_bayesian | Trial 4 val_wape=0.276104 (wape=0.276104 mape=0.548237 mae=17.1464) params={'iterations': 851, 'learning_rate': 0.01459007452373112, 'depth': 6, 'l2_leaf_reg': 2.9967309097101573, 'random_strength': 0.9121399684340719}
+2026-09-08 19:55:46 | INFO     | demand_forecasting.tune_bayesian | Trial 5 val_wape=0.274566 (wape=0.274566 mape=0.548460 mae=17.0508) params={'iterations': 1007, 'learning_rate': 0.017172542103877867, 'depth': 8, 'l2_leaf_reg': 5.898602410432693, 'random_strength': 0.09290082543999545}
+2026-09-08 19:56:27 | INFO     | demand_forecasting.tune_bayesian | Trial 6 val_wape=0.277665 (wape=0.277665 mape=0.546200 mae=17.2433) params={'iterations': 847, 'learning_rate': 0.015869086642715014, 'depth': 5, 'l2_leaf_reg': 17.16044502975481, 'random_strength': 1.9312640661491187}
+2026-09-08 19:57:24 | INFO     | demand_forecasting.tune_bayesian | Trial 7 val_wape=0.276128 (wape=0.276128 mape=0.550891 mae=17.1479) params={'iterations': 1028, 'learning_rate': 0.022816739880816207, 'depth': 5, 'l2_leaf_reg': 7.766184280392884, 'random_strength': 0.8803049874792026}
+2026-09-08 19:58:09 | INFO     | demand_forecasting.tune_bayesian | Trial 8 val_wape=0.275929 (wape=0.275929 mape=0.549495 mae=17.1355) params={'iterations': 409, 'learning_rate': 0.03822726574649208, 'depth': 5, 'l2_leaf_reg': 15.242391728466368, 'random_strength': 0.5175599632000338}
+2026-09-08 19:58:57 | INFO     | demand_forecasting.tune_bayesian | Trial 9 val_wape=0.275038 (wape=0.275038 mape=0.545930 mae=17.0802) params={'iterations': 896, 'learning_rate': 0.02325951592241212, 'depth': 8, 'l2_leaf_reg': 5.143828405076927, 'random_strength': 0.3697089110510541}
+2026-09-08 19:59:51 | INFO     | demand_forecasting.tune_bayesian | Trial 10 val_wape=0.274901 (wape=0.274901 mape=0.547829 mae=17.0717) params={'iterations': 1161, 'learning_rate': 0.010616986193377953, 'depth': 8, 'l2_leaf_reg': 9.803070332877892, 'random_strength': 0.2116766165722277}
+2026-09-08 20:00:48 | INFO     | demand_forecasting.tune_bayesian | Trial 11 val_wape=0.274637 (wape=0.274637 mape=0.548590 mae=17.0552) params={'iterations': 1101, 'learning_rate': 0.010923641961104999, 'depth': 8, 'l2_leaf_reg': 11.841440172011326, 'random_strength': 0.08293731976033952}
+2026-09-08 20:00:52 | INFO     | demand_forecasting.tune_bayesian | Best trial:
+{
+  "best_params": {
+    "depth": 8,
+    "iterations": 1007,
+    "l2_leaf_reg": 5.898602410432693,
+    "learning_rate": 0.017172542103877867,
+    "random_strength": 0.09290082543999545
+  },
+  "best_params_path": "artifacts/tuning/catboost_best_params.json",
+  "best_trial_metrics": {
+    "bias": -0.0032718586905869564,
+    "mae": 17.05084892229088,
+    "mape": 0.5484598472620931,
+    "mape_coverage": 0.9965850882185544,
+    "rmse": 26.254306297856754,
+    "smape": 0.2967791822730838,
+    "wape": 0.274565991996408
+  },
+  "best_trial_number": 5,
+  "best_validation_wape": 0.274565991996408,
+  "completed_trials": 12,
+  "mlflow_parent_run_id": "1545a597317c400f9b3e1626856aabbd",
+  "model": "catboost",
+  "objective_metric": "wape",
+  "trials_path": "artifacts/tuning/catboost_trials.csv"
+}
+2026-09-08 22:33:09 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "model": "lightgbm",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T22:33:09.138124+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 22:33:09 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 22:33:18 | INFO     | demand_forecasting.tune_bayesian | Tuning setup:
+{
+  "feature_count": 52,
+  "log_trial_models": true,
+  "model": "lightgbm",
+  "n_trials": 25,
+  "objective_metric": "wape",
+  "timeout_seconds": null,
+  "train_row_cap": 200000,
+  "train_rows": 200000,
+  "validation_rows": 14056,
+  "validation_window": "2023-12-04..2023-12-17"
+}
+2026-09-08 22:34:33 | INFO     | demand_forecasting.tune_bayesian | Trial 0 val_wape=0.279542 (val wape=0.279542 mape=0.548507 mae=17.3599 | train wape=0.215247) params={'n_estimators': 637, 'learning_rate': 0.13125830316209655, 'num_leaves': 195, 'max_depth': 10, 'min_child_samples': 24, 'subsample': 0.7467983561008608, 'colsample_bytree': 0.7174250836504598, 'reg_lambda': 2.9154431891537547}
+2026-09-08 22:35:16 | INFO     | demand_forecasting.tune_bayesian | Trial 1 val_wape=0.277419 (val wape=0.277419 mape=0.544610 mae=17.2280 | train wape=0.250941) params={'n_estimators': 841, 'learning_rate': 0.06803900745073706, 'num_leaves': 35, 'max_depth': 14, 'min_child_samples': 85, 'subsample': 0.7637017332034828, 'colsample_bytree': 0.7545474901621302, 'reg_lambda': 0.00541524411940254}
+2026-09-08 22:36:02 | INFO     | demand_forecasting.tune_bayesian | Trial 2 val_wape=0.277745 (val wape=0.277745 mape=0.547270 mae=17.2483 | train wape=0.255005) params={'n_estimators': 574, 'learning_rate': 0.04141536110538596, 'num_leaves': 128, 'max_depth': 7, 'min_child_samples': 65, 'subsample': 0.7418481581956126, 'colsample_bytree': 0.7876433945605654, 'reg_lambda': 0.029204338471814112}
+2026-09-08 22:36:44 | INFO     | demand_forecasting.tune_bayesian | Trial 3 val_wape=0.278655 (val wape=0.278655 mape=0.549289 mae=17.3048 | train wape=0.237936) params={'n_estimators': 710, 'learning_rate': 0.0838375512850209, 'num_leaves': 75, 'max_depth': 10, 'min_child_samples': 63, 'subsample': 0.7139351238159993, 'colsample_bytree': 0.8822634555704315, 'reg_lambda': 0.004809461967501573}
+2026-09-08 22:37:26 | INFO     | demand_forecasting.tune_bayesian | Trial 4 val_wape=0.282511 (val wape=0.282511 mape=0.538522 mae=17.5442 | train wape=0.211663) params={'n_estimators': 358, 'learning_rate': 0.13060986669773664, 'num_leaves': 248, 'max_depth': 13, 'min_child_samples': 37, 'subsample': 0.7293016342019151, 'colsample_bytree': 0.905269907953647, 'reg_lambda': 0.057624872164786026}
+2026-09-08 22:38:05 | INFO     | demand_forecasting.tune_bayesian | Trial 5 val_wape=0.276677 (val wape=0.276677 mape=0.545672 mae=17.1819 | train wape=0.262390) params={'n_estimators': 409, 'learning_rate': 0.03822726574649208, 'num_leaves': 38, 'max_depth': 14, 'min_child_samples': 33, 'subsample': 0.8987566853061946, 'colsample_bytree': 0.7935133228268233, 'reg_lambda': 0.12030178871154672}
+2026-09-08 22:39:09 | INFO     | demand_forecasting.tune_bayesian | Trial 6 val_wape=0.276917 (val wape=0.276917 mape=0.539120 mae=17.1968 | train wape=0.243625) params={'n_estimators': 792, 'learning_rate': 0.016497027917250065, 'num_leaves': 249, 'max_depth': 12, 'min_child_samples': 95, 'subsample': 0.9684482051282947, 'colsample_bytree': 0.8793699936433255, 'reg_lambda': 4.869640941520899}
+2026-09-08 22:39:53 | INFO     | demand_forecasting.tune_bayesian | Trial 7 val_wape=0.277486 (val wape=0.277486 mape=0.548438 mae=17.2322 | train wape=0.267501) params={'n_estimators': 379, 'learning_rate': 0.017001754132211097, 'num_leaves': 41, 'max_depth': 8, 'min_child_samples': 45, 'subsample': 0.7814047095321688, 'colsample_bytree': 0.9486212527455788, 'reg_lambda': 0.026730883107816707}
+2026-09-08 22:40:37 | INFO     | demand_forecasting.tune_bayesian | Trial 8 val_wape=0.277220 (val wape=0.277220 mape=0.547803 mae=17.2156 | train wape=0.253265) params={'n_estimators': 553, 'learning_rate': 0.043477055106943, 'num_leaves': 62, 'max_depth': 13, 'min_child_samples': 16, 'subsample': 0.9960660809801551, 'colsample_bytree': 0.9316734307889972, 'reg_lambda': 0.0062353771356731605}
+2026-09-08 22:41:19 | INFO     | demand_forecasting.tune_bayesian | Trial 9 val_wape=0.277001 (val wape=0.277001 mape=0.542281 mae=17.2020 | train wape=0.234403) params={'n_estimators': 304, 'learning_rate': 0.09100328259258599, 'num_leaves': 190, 'max_depth': 12, 'min_child_samples': 80, 'subsample': 0.7222133955202271, 'colsample_bytree': 0.8075397185632818, 'reg_lambda': 0.0029072088906598446}
+2026-09-08 22:42:03 | INFO     | demand_forecasting.tune_bayesian | Trial 10 val_wape=0.276512 (val wape=0.276512 mape=0.542978 mae=17.1717 | train wape=0.252343) params={'n_estimators': 457, 'learning_rate': 0.028861609427199786, 'num_leaves': 116, 'max_depth': 13, 'min_child_samples': 21, 'subsample': 0.9159109689497484, 'colsample_bytree': 0.8009092306673552, 'reg_lambda': 1.9721457759982308}
+2026-09-08 22:42:47 | INFO     | demand_forecasting.tune_bayesian | Trial 11 val_wape=0.277218 (val wape=0.277218 mape=0.545428 mae=17.2156 | train wape=0.256978) params={'n_estimators': 329, 'learning_rate': 0.031212047095957034, 'num_leaves': 109, 'max_depth': 13, 'min_child_samples': 30, 'subsample': 0.880665170328414, 'colsample_bytree': 0.8152551210847016, 'reg_lambda': 0.12076219361542831}
+2026-09-08 22:43:37 | INFO     | demand_forecasting.tune_bayesian | Trial 12 val_wape=0.276520 (val wape=0.276520 mape=0.544097 mae=17.1722 | train wape=0.254209) params={'n_estimators': 657, 'learning_rate': 0.035241751940917394, 'num_leaves': 63, 'max_depth': 14, 'min_child_samples': 31, 'subsample': 0.7829995675101665, 'colsample_bytree': 0.703953019739002, 'reg_lambda': 2.9276614328722537}
+2026-09-08 22:44:34 | INFO     | demand_forecasting.tune_bayesian | Trial 13 val_wape=0.276224 (val wape=0.276224 mape=0.542759 mae=17.1538 | train wape=0.250067) params={'n_estimators': 795, 'learning_rate': 0.026577046637665858, 'num_leaves': 92, 'max_depth': 11, 'min_child_samples': 18, 'subsample': 0.7177538759297266, 'colsample_bytree': 0.7168015276853638, 'reg_lambda': 0.5916805023932482}
+2026-09-08 22:45:23 | INFO     | demand_forecasting.tune_bayesian | Trial 14 val_wape=0.276717 (val wape=0.276717 mape=0.547329 mae=17.1844 | train wape=0.262893) params={'n_estimators': 895, 'learning_rate': 0.016202557131580985, 'num_leaves': 38, 'max_depth': 8, 'min_child_samples': 14, 'subsample': 0.7245246866504792, 'colsample_bytree': 0.7694823557767911, 'reg_lambda': 9.778921267517875}
+2026-09-08 22:46:20 | INFO     | demand_forecasting.tune_bayesian | Trial 15 val_wape=0.277275 (val wape=0.277275 mape=0.543031 mae=17.2191 | train wape=0.227173) params={'n_estimators': 890, 'learning_rate': 0.03814281288828568, 'num_leaves': 166, 'max_depth': 13, 'min_child_samples': 34, 'subsample': 0.7160628286274092, 'colsample_bytree': 0.8094040520313729, 'reg_lambda': 1.1338454020232138}
+2026-09-08 22:47:02 | INFO     | demand_forecasting.tune_bayesian | Trial 16 val_wape=0.277368 (val wape=0.277368 mape=0.541377 mae=17.2249 | train wape=0.242605) params={'n_estimators': 320, 'learning_rate': 0.04578750178288586, 'num_leaves': 218, 'max_depth': 10, 'min_child_samples': 17, 'subsample': 0.8847380036789808, 'colsample_bytree': 0.7644224500302059, 'reg_lambda': 9.967135222212294}
+2026-09-08 22:47:53 | INFO     | demand_forecasting.tune_bayesian | Trial 17 val_wape=0.276639 (val wape=0.276639 mape=0.543931 mae=17.1796 | train wape=0.257797) params={'n_estimators': 505, 'learning_rate': 0.042188026360139456, 'num_leaves': 52, 'max_depth': 9, 'min_child_samples': 27, 'subsample': 0.7065698187401794, 'colsample_bytree': 0.7048930375240644, 'reg_lambda': 0.2538017008389389}
+2026-09-08 22:49:00 | INFO     | demand_forecasting.tune_bayesian | Trial 18 val_wape=0.276644 (val wape=0.276644 mape=0.545824 mae=17.1799 | train wape=0.254508) params={'n_estimators': 977, 'learning_rate': 0.01278905608583873, 'num_leaves': 108, 'max_depth': 11, 'min_child_samples': 14, 'subsample': 0.8030383042772832, 'colsample_bytree': 0.8028966838862232, 'reg_lambda': 0.24403558735039937}
+2026-09-08 22:49:53 | INFO     | demand_forecasting.tune_bayesian | Trial 19 val_wape=0.276293 (val wape=0.276293 mape=0.541694 mae=17.1581 | train wape=0.249734) params={'n_estimators': 636, 'learning_rate': 0.019535591817676185, 'num_leaves': 173, 'max_depth': 9, 'min_child_samples': 16, 'subsample': 0.7570282969048834, 'colsample_bytree': 0.7207325867748646, 'reg_lambda': 8.47388280210274}
+2026-09-08 22:50:44 | INFO     | demand_forecasting.tune_bayesian | Trial 20 val_wape=0.276848 (val wape=0.276848 mape=0.543990 mae=17.1926 | train wape=0.257496) params={'n_estimators': 623, 'learning_rate': 0.010533715536306243, 'num_leaves': 171, 'max_depth': 11, 'min_child_samples': 28, 'subsample': 0.7387223707302728, 'colsample_bytree': 0.8821619956941871, 'reg_lambda': 5.762026796860782}
+2026-09-08 22:51:30 | INFO     | demand_forecasting.tune_bayesian | Trial 21 val_wape=0.276445 (val wape=0.276445 mape=0.540878 mae=17.1675 | train wape=0.248830) params={'n_estimators': 616, 'learning_rate': 0.01838746135389874, 'num_leaves': 211, 'max_depth': 9, 'min_child_samples': 14, 'subsample': 0.7898816607582526, 'colsample_bytree': 0.7138164563646078, 'reg_lambda': 8.9470374493136}
+2026-09-08 22:52:25 | INFO     | demand_forecasting.tune_bayesian | Trial 22 val_wape=0.276422 (val wape=0.276422 mape=0.542342 mae=17.1661 | train wape=0.243489) params={'n_estimators': 849, 'learning_rate': 0.01855470059102601, 'num_leaves': 213, 'max_depth': 10, 'min_child_samples': 30, 'subsample': 0.8048149315152624, 'colsample_bytree': 0.7340388904717385, 'reg_lambda': 2.772066909752921}
+2026-09-08 22:53:13 | INFO     | demand_forecasting.tune_bayesian | Trial 23 val_wape=0.275950 (val wape=0.275950 mape=0.542852 mae=17.1368 | train wape=0.255450) params={'n_estimators': 834, 'learning_rate': 0.0119632088278674, 'num_leaves': 158, 'max_depth': 9, 'min_child_samples': 56, 'subsample': 0.7234819759927084, 'colsample_bytree': 0.7371131029562072, 'reg_lambda': 1.2640381745959015}
+2026-09-08 22:54:06 | INFO     | demand_forecasting.tune_bayesian | Trial 24 val_wape=0.276131 (val wape=0.276131 mape=0.543723 mae=17.1480 | train wape=0.258617) params={'n_estimators': 809, 'learning_rate': 0.010978933917333471, 'num_leaves': 113, 'max_depth': 10, 'min_child_samples': 61, 'subsample': 0.7163983189104505, 'colsample_bytree': 0.7338773339196755, 'reg_lambda': 4.691178205949171}
+2026-09-08 22:54:12 | INFO     | demand_forecasting.tune_bayesian | Best trial:
+{
+  "best_params": {
+    "colsample_bytree": 0.7371131029562072,
+    "learning_rate": 0.0119632088278674,
+    "max_depth": 9,
+    "min_child_samples": 56,
+    "n_estimators": 834,
+    "num_leaves": 158,
+    "reg_lambda": 1.2640381745959015,
+    "subsample": 0.7234819759927084
+  },
+  "best_params_path": "artifacts_v2/tuning/lightgbm_best_params.json",
+  "best_trial_metrics": {
+    "bias": -0.009404012969055174,
+    "mae": 17.136770674432036,
+    "mape": 0.5428522454549812,
+    "mape_coverage": 0.9965850882185544,
+    "rmse": 26.459892348217764,
+    "smape": 0.2969990875860731,
+    "wape": 0.2759495706802743
+  },
+  "best_trial_number": 23,
+  "best_validation_wape": 0.2759495706802743,
+  "completed_trials": 25,
+  "mlflow_parent_run_id": "9916a68e6dbf4f7ebf5d4f7c36cf2186",
+  "model": "lightgbm",
+  "objective_metric": "wape",
+  "trials_path": "artifacts_v2/tuning/lightgbm_trials.csv"
+}
+2026-09-08 22:54:43 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "model": "xgboost",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T22:54:43.590830+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 22:54:43 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 22:54:53 | INFO     | demand_forecasting.tune_bayesian | Tuning setup:
+{
+  "feature_count": 52,
+  "log_trial_models": true,
+  "model": "xgboost",
+  "n_trials": 25,
+  "objective_metric": "wape",
+  "timeout_seconds": null,
+  "train_row_cap": 200000,
+  "train_rows": 200000,
+  "validation_rows": 14056,
+  "validation_window": "2023-12-04..2023-12-17"
+}
+2026-09-08 22:56:13 | INFO     | demand_forecasting.tune_bayesian | Trial 0 val_wape=0.291819 (val wape=0.291819 mape=0.544604 mae=18.1223 | train wape=0.080578) params={'n_estimators': 637, 'learning_rate': 0.13125830316209655, 'max_depth': 10, 'min_child_weight': 6.009974718380312, 'subsample': 0.7468055921327309, 'colsample_bytree': 0.7467983561008608, 'reg_lambda': 0.0017775399007348214}
+2026-09-08 22:57:22 | INFO     | demand_forecasting.tune_bayesian | Trial 1 val_wape=0.282343 (val wape=0.282343 mape=0.542274 mae=17.5338 | train wape=0.108690) params={'n_estimators': 1080, 'learning_rate': 0.05092911283433821, 'max_depth': 10, 'min_child_weight': 1.0636066512540283, 'subsample': 0.9909729556485982, 'colsample_bytree': 0.9497327922401265, 'reg_lambda': 0.008189867664214782}
+2026-09-08 22:58:03 | INFO     | demand_forecasting.tune_bayesian | Trial 2 val_wape=0.273937 (val wape=0.273937 mape=0.543045 mae=17.0118 | train wape=0.263108) params={'n_estimators': 463, 'learning_rate': 0.016432378919707624, 'max_depth': 6, 'min_child_weight': 4.816414530907083, 'subsample': 0.8295835055926347, 'colsample_bytree': 0.7873687420594125, 'reg_lambda': 0.42815168066077464}
+2026-09-08 22:58:42 | INFO     | demand_forecasting.tune_bayesian | Trial 3 val_wape=0.273165 (val wape=0.273165 mape=0.542445 mae=16.9638 | train wape=0.255207) params={'n_estimators': 425, 'learning_rate': 0.022059149678071027, 'max_depth': 7, 'min_child_weight': 3.920673972242136, 'subsample': 0.935552788417904, 'colsample_bytree': 0.7599021346475079, 'reg_lambda': 0.16283124535115095}
+2026-09-08 22:59:51 | INFO     | demand_forecasting.tune_bayesian | Trial 4 val_wape=0.274525 (val wape=0.274525 mape=0.537618 mae=17.0483 | train wape=0.239161) params={'n_estimators': 833, 'learning_rate': 0.011340440501807348, 'max_depth': 9, 'min_child_weight': 1.6666983286066417, 'subsample': 0.7195154778955838, 'colsample_bytree': 0.984665661176, 'reg_lambda': 14.230243744913723}
+2026-09-08 23:00:41 | INFO     | demand_forecasting.tune_bayesian | Trial 5 val_wape=0.275911 (val wape=0.275911 mape=0.550822 mae=17.1344 | train wape=0.264426) params={'n_estimators': 1028, 'learning_rate': 0.022816739880816207, 'max_depth': 4, 'min_child_weight': 7.766184280392884, 'subsample': 0.8320457481218804, 'colsample_bytree': 0.7366114704534336, 'reg_lambda': 0.13482509766281273}
+2026-09-08 23:01:19 | INFO     | demand_forecasting.tune_bayesian | Trial 6 val_wape=0.278975 (val wape=0.278975 mape=0.549502 mae=17.3247 | train wape=0.243780) params={'n_estimators': 330, 'learning_rate': 0.1173393765991262, 'max_depth': 6, 'min_child_weight': 7.277150634170934, 'subsample': 0.7935133228268233, 'colsample_bytree': 0.8560204063533432, 'reg_lambda': 0.22460390897586935}
+2026-09-08 23:02:03 | INFO     | demand_forecasting.tune_bayesian | Trial 7 val_wape=0.282397 (val wape=0.282397 mape=0.543610 mae=17.5371 | train wape=0.137858) params={'n_estimators': 466, 'learning_rate': 0.13814017620274424, 'max_depth': 10, 'min_child_weight': 16.684619386293466, 'subsample': 0.9684482051282947, 'colsample_bytree': 0.8793699936433255, 'reg_lambda': 9.225899874801096}
+2026-09-08 23:02:43 | INFO     | demand_forecasting.tune_bayesian | Trial 8 val_wape=0.277084 (val wape=0.277084 mape=0.547626 mae=17.2072 | train wape=0.270134) params={'n_estimators': 379, 'learning_rate': 0.017001754132211097, 'max_depth': 4, 'min_child_weight': 2.6501137707458966, 'subsample': 0.8166031869068446, 'colsample_bytree': 0.7814047095321688, 'reg_lambda': 3.6679624869306977}
+2026-09-08 23:03:30 | INFO     | demand_forecasting.tune_bayesian | Trial 9 val_wape=0.273303 (val wape=0.273303 mape=0.537779 mae=16.9724 | train wape=0.243807) params={'n_estimators': 621, 'learning_rate': 0.02139954903017622, 'max_depth': 8, 'min_child_weight': 1.5252697030515172, 'subsample': 0.9406590942262119, 'colsample_bytree': 0.7223651931039312, 'reg_lambda': 17.564278579581362}
+2026-09-08 23:04:08 | INFO     | demand_forecasting.tune_bayesian | Trial 10 val_wape=0.273549 (val wape=0.273549 mape=0.541158 mae=16.9877 | train wape=0.258557) params={'n_estimators': 452, 'learning_rate': 0.015500188286754847, 'max_depth': 7, 'min_child_weight': 4.457020339008881, 'subsample': 0.9782274389895966, 'colsample_bytree': 0.7977858301106499, 'reg_lambda': 0.013153665221476}
+2026-09-08 23:05:16 | INFO     | demand_forecasting.tune_bayesian | Trial 11 val_wape=0.274086 (val wape=0.274086 mape=0.537031 mae=17.0210 | train wape=0.201115) params={'n_estimators': 701, 'learning_rate': 0.026016665999482057, 'max_depth': 10, 'min_child_weight': 2.475796591337898, 'subsample': 0.8903170572658162, 'colsample_bytree': 0.7601847700354765, 'reg_lambda': 12.562804806417093}
+2026-09-08 23:05:55 | INFO     | demand_forecasting.tune_bayesian | Trial 12 val_wape=0.276448 (val wape=0.276448 mape=0.548743 mae=17.1677 | train wape=0.268280) params={'n_estimators': 769, 'learning_rate': 0.012326480833490363, 'max_depth': 4, 'min_child_weight': 3.6806959574647675, 'subsample': 0.9761247938271124, 'colsample_bytree': 0.753041916032713, 'reg_lambda': 1.257289763759096}
+2026-09-08 23:06:40 | INFO     | demand_forecasting.tune_bayesian | Trial 13 val_wape=0.273034 (val wape=0.273034 mape=0.538282 mae=16.9557 | train wape=0.251102) params={'n_estimators': 658, 'learning_rate': 0.010986919678435758, 'max_depth': 8, 'min_child_weight': 1.1811180024287575, 'subsample': 0.9826409236482199, 'colsample_bytree': 0.7143073759328415, 'reg_lambda': 4.76982709056571}
+2026-09-08 23:07:42 | INFO     | demand_forecasting.tune_bayesian | Trial 14 val_wape=0.273589 (val wape=0.273589 mape=0.540512 mae=16.9902 | train wape=0.237306) params={'n_estimators': 865, 'learning_rate': 0.016348937509331436, 'max_depth': 8, 'min_child_weight': 1.0224752205183412, 'subsample': 0.9315238919556811, 'colsample_bytree': 0.8923685288475119, 'reg_lambda': 0.20095022080613678}
+2026-09-08 23:08:34 | INFO     | demand_forecasting.tune_bayesian | Trial 15 val_wape=0.272581 (val wape=0.272581 mape=0.539508 mae=16.9276 | train wape=0.239039) params={'n_estimators': 1139, 'learning_rate': 0.011860263460647781, 'max_depth': 8, 'min_child_weight': 1.6078044629600334, 'subsample': 0.9833021828723189, 'colsample_bytree': 0.7296403275566217, 'reg_lambda': 0.4111920689733318}
+2026-09-08 23:09:16 | INFO     | demand_forecasting.tune_bayesian | Trial 16 val_wape=0.274898 (val wape=0.274898 mape=0.545207 mae=17.0715 | train wape=0.255107) params={'n_estimators': 1131, 'learning_rate': 0.01567086761677024, 'max_depth': 6, 'min_child_weight': 2.83058099308353, 'subsample': 0.9853015545106243, 'colsample_bytree': 0.8030749886461721, 'reg_lambda': 0.013492740847216972}
+2026-09-08 23:10:31 | INFO     | demand_forecasting.tune_bayesian | Trial 17 val_wape=0.274729 (val wape=0.274729 mape=0.538304 mae=17.0609 | train wape=0.185809) params={'n_estimators': 1118, 'learning_rate': 0.016433902630880445, 'max_depth': 10, 'min_child_weight': 2.29822004646885, 'subsample': 0.9059120701597896, 'colsample_bytree': 0.7490137291549207, 'reg_lambda': 0.3111029997251164}
+2026-09-08 23:11:22 | INFO     | demand_forecasting.tune_bayesian | Trial 18 val_wape=0.272925 (val wape=0.272925 mape=0.539096 mae=16.9489 | train wape=0.235793) params={'n_estimators': 647, 'learning_rate': 0.012800987975577171, 'max_depth': 9, 'min_child_weight': 1.4970745419533624, 'subsample': 0.9946977198077726, 'colsample_bytree': 0.7674019769404625, 'reg_lambda': 0.04001008351224022}
+2026-09-08 23:12:12 | INFO     | demand_forecasting.tune_bayesian | Trial 19 val_wape=0.273960 (val wape=0.273960 mape=0.538004 mae=17.0132 | train wape=0.239058) params={'n_estimators': 703, 'learning_rate': 0.010443904838691452, 'max_depth': 9, 'min_child_weight': 1.894406799282887, 'subsample': 0.9359421696729227, 'colsample_bytree': 0.7578508034932085, 'reg_lambda': 0.017262578916048904}
+2026-09-08 23:12:59 | INFO     | demand_forecasting.tune_bayesian | Trial 20 val_wape=0.276856 (val wape=0.276856 mape=0.538549 mae=17.1931 | train wape=0.210786) params={'n_estimators': 779, 'learning_rate': 0.04247343821181269, 'max_depth': 8, 'min_child_weight': 1.0809695720612715, 'subsample': 0.9793213879166728, 'colsample_bytree': 0.7413428787264172, 'reg_lambda': 0.05426597062871885}
+2026-09-08 23:13:50 | INFO     | demand_forecasting.tune_bayesian | Trial 21 val_wape=0.272977 (val wape=0.272977 mape=0.538643 mae=16.9522 | train wape=0.240165) params={'n_estimators': 1199, 'learning_rate': 0.010628955992688394, 'max_depth': 8, 'min_child_weight': 1.1793608667258038, 'subsample': 0.9263143182954567, 'colsample_bytree': 0.7382876270210524, 'reg_lambda': 1.0704485877912513}
+2026-09-08 23:14:52 | INFO     | demand_forecasting.tune_bayesian | Trial 22 val_wape=0.272849 (val wape=0.272849 mape=0.536506 mae=16.9442 | train wape=0.230366) params={'n_estimators': 1190, 'learning_rate': 0.010934257350737988, 'max_depth': 9, 'min_child_weight': 1.33283094819648, 'subsample': 0.9715470678731938, 'colsample_bytree': 0.7077932131790344, 'reg_lambda': 13.410292712048417}
+2026-09-08 23:15:52 | INFO     | demand_forecasting.tune_bayesian | Trial 23 val_wape=0.272998 (val wape=0.272998 mape=0.538742 mae=16.9535 | train wape=0.242962) params={'n_estimators': 1055, 'learning_rate': 0.013120384256908077, 'max_depth': 8, 'min_child_weight': 1.3535850147406778, 'subsample': 0.9624870430982312, 'colsample_bytree': 0.717546862139567, 'reg_lambda': 17.628373554394685}
+2026-09-08 23:16:46 | INFO     | demand_forecasting.tune_bayesian | Trial 24 val_wape=0.271966 (val wape=0.271966 mape=0.539625 mae=16.8894 | train wape=0.237664) params={'n_estimators': 1094, 'learning_rate': 0.013963373939334655, 'max_depth': 8, 'min_child_weight': 5.918880885083987, 'subsample': 0.9900916059704233, 'colsample_bytree': 0.707480002036797, 'reg_lambda': 1.755590690148228}
+2026-09-08 23:16:50 | INFO     | demand_forecasting.tune_bayesian | Best trial:
+{
+  "best_params": {
+    "colsample_bytree": 0.707480002036797,
+    "learning_rate": 0.013963373939334655,
+    "max_depth": 8,
+    "min_child_weight": 5.918880885083987,
+    "n_estimators": 1094,
+    "reg_lambda": 1.755590690148228,
+    "subsample": 0.9900916059704233
+  },
+  "best_params_path": "artifacts_v2/tuning/xgboost_best_params.json",
+  "best_trial_metrics": {
+    "bias": -0.005439396121236262,
+    "mae": 16.889382198037378,
+    "mape": 0.539624560433215,
+    "mape_coverage": 0.9965850882185544,
+    "rmse": 25.892373930445856,
+    "smape": 0.29532893422925266,
+    "wape": 0.2719659295877197
+  },
+  "best_trial_number": 24,
+  "best_validation_wape": 0.2719659295877197,
+  "completed_trials": 25,
+  "mlflow_parent_run_id": "d811541cb52d4bdc9637af085f59a972",
+  "model": "xgboost",
+  "objective_metric": "wape",
+  "trials_path": "artifacts_v2/tuning/xgboost_trials.csv"
+}
+2026-09-08 23:17:20 | INFO     | demand_forecasting.tune_bayesian | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "model": "catboost",
+  "objective": "validation_wape_recursive_14_day",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sampler": "optuna.TPESampler(multivariate=True)",
+  "started_at_utc": "2026-09-08T23:17:20.160256+00:00",
+  "step": "tune_bayesian",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-08 23:17:20 | INFO     | demand_forecasting.tune_bayesian | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-08 23:17:31 | INFO     | demand_forecasting.tune_bayesian | Tuning setup:
+{
+  "feature_count": 52,
+  "log_trial_models": true,
+  "model": "catboost",
+  "n_trials": 25,
+  "objective_metric": "wape",
+  "timeout_seconds": null,
+  "train_row_cap": 200000,
+  "train_rows": 200000,
+  "validation_rows": 14056,
+  "validation_window": "2023-12-04..2023-12-17"
+}
+2026-09-08 23:18:37 | INFO     | demand_forecasting.tune_bayesian | Trial 0 val_wape=0.278508 (val wape=0.278508 mape=0.544502 mae=17.2957 | train wape=0.230235) params={'iterations': 637, 'learning_rate': 0.13125830316209655, 'depth': 9, 'l2_leaf_reg': 6.009974718380312, 'random_strength': 0.31203728088487304}
+2026-09-08 23:19:30 | INFO     | demand_forecasting.tune_bayesian | Trial 1 val_wape=0.279118 (val wape=0.279118 mape=0.541817 mae=17.3335 | train wape=0.270209) params={'iterations': 440, 'learning_rate': 0.011703388679635262, 'depth': 10, 'l2_leaf_reg': 6.054365855469246, 'random_strength': 1.416145155592091}
+2026-09-08 23:20:12 | INFO     | demand_forecasting.tune_bayesian | Trial 2 val_wape=0.276921 (val wape=0.276921 mape=0.542493 mae=17.1971 | train wape=0.245749) params={'iterations': 318, 'learning_rate': 0.13826189316223852, 'depth': 9, 'l2_leaf_reg': 1.8891200276189386, 'random_strength': 0.36364993441420124}
+2026-09-08 23:21:06 | INFO     | demand_forecasting.tune_bayesian | Trial 3 val_wape=0.275501 (val wape=0.275501 mape=0.547509 mae=17.1089 | train wape=0.266989) params={'iterations': 465, 'learning_rate': 0.02279379523765072, 'depth': 8, 'l2_leaf_reg': 3.6473162849112093, 'random_strength': 0.5824582803960838}
+2026-09-08 23:21:56 | INFO     | demand_forecasting.tune_bayesian | Trial 4 val_wape=0.276104 (val wape=0.276104 mape=0.548237 mae=17.1464 | train wape=0.269142) params={'iterations': 851, 'learning_rate': 0.01459007452373112, 'depth': 6, 'l2_leaf_reg': 2.9967309097101573, 'random_strength': 0.9121399684340719}
+2026-09-08 23:22:50 | INFO     | demand_forecasting.tune_bayesian | Trial 5 val_wape=0.274566 (val wape=0.274566 mape=0.548460 mae=17.0508 | train wape=0.262842) params={'iterations': 1007, 'learning_rate': 0.017172542103877867, 'depth': 8, 'l2_leaf_reg': 5.898602410432693, 'random_strength': 0.09290082543999545}
+2026-09-08 23:23:34 | INFO     | demand_forecasting.tune_bayesian | Trial 6 val_wape=0.277665 (val wape=0.277665 mape=0.546200 mae=17.2433 | train wape=0.270623) params={'iterations': 847, 'learning_rate': 0.015869086642715014, 'depth': 5, 'l2_leaf_reg': 17.16044502975481, 'random_strength': 1.9312640661491187}
+2026-09-08 23:24:23 | INFO     | demand_forecasting.tune_bayesian | Trial 7 val_wape=0.276128 (val wape=0.276128 mape=0.550891 mae=17.1479 | train wape=0.267906) params={'iterations': 1028, 'learning_rate': 0.022816739880816207, 'depth': 5, 'l2_leaf_reg': 7.766184280392884, 'random_strength': 0.8803049874792026}
+2026-09-08 23:25:03 | INFO     | demand_forecasting.tune_bayesian | Trial 8 val_wape=0.275929 (val wape=0.275929 mape=0.549495 mae=17.1355 | train wape=0.269048) params={'iterations': 409, 'learning_rate': 0.03822726574649208, 'depth': 5, 'l2_leaf_reg': 15.242391728466368, 'random_strength': 0.5175599632000338}
+2026-09-08 23:26:09 | INFO     | demand_forecasting.tune_bayesian | Trial 9 val_wape=0.275038 (val wape=0.275038 mape=0.545930 mae=17.0802 | train wape=0.261522) params={'iterations': 896, 'learning_rate': 0.02325951592241212, 'depth': 8, 'l2_leaf_reg': 5.143828405076927, 'random_strength': 0.3697089110510541}
+2026-09-08 23:27:12 | INFO     | demand_forecasting.tune_bayesian | Trial 10 val_wape=0.274901 (val wape=0.274901 mape=0.547829 mae=17.0717 | train wape=0.265332) params={'iterations': 1161, 'learning_rate': 0.010616986193377953, 'depth': 8, 'l2_leaf_reg': 9.803070332877892, 'random_strength': 0.2116766165722277}
+2026-09-08 23:28:10 | INFO     | demand_forecasting.tune_bayesian | Trial 11 val_wape=0.274637 (val wape=0.274637 mape=0.548590 mae=17.0552 | train wape=0.265302) params={'iterations': 1101, 'learning_rate': 0.010923641961104999, 'depth': 8, 'l2_leaf_reg': 11.841440172011326, 'random_strength': 0.08293731976033952}
+2026-09-08 23:29:01 | INFO     | demand_forecasting.tune_bayesian | Trial 12 val_wape=0.275177 (val wape=0.275177 mape=0.547425 mae=17.0888 | train wape=0.267413) params={'iterations': 725, 'learning_rate': 0.016436659181398725, 'depth': 7, 'l2_leaf_reg': 14.810946241968185, 'random_strength': 0.32232365396993334}
+2026-09-08 23:30:28 | INFO     | demand_forecasting.tune_bayesian | Trial 13 val_wape=0.276883 (val wape=0.276883 mape=0.540482 mae=17.1948 | train wape=0.230135) params={'iterations': 1170, 'learning_rate': 0.038172122271195486, 'depth': 10, 'l2_leaf_reg': 14.50913031935712, 'random_strength': 0.5703441937641052}
+2026-09-08 23:31:32 | INFO     | demand_forecasting.tune_bayesian | Trial 14 val_wape=0.275830 (val wape=0.275830 mape=0.547641 mae=17.1293 | train wape=0.258100) params={'iterations': 1139, 'learning_rate': 0.039896315359497336, 'depth': 7, 'l2_leaf_reg': 2.526338995290644, 'random_strength': 0.0971679757429281}
+2026-09-08 23:32:48 | INFO     | demand_forecasting.tune_bayesian | Trial 15 val_wape=0.274629 (val wape=0.274629 mape=0.546404 mae=17.0548 | train wape=0.260498) params={'iterations': 885, 'learning_rate': 0.012352421888749698, 'depth': 10, 'l2_leaf_reg': 17.854693361159512, 'random_strength': 0.14601774142122345}
+2026-09-08 23:33:52 | INFO     | demand_forecasting.tune_bayesian | Trial 16 val_wape=0.275613 (val wape=0.275613 mape=0.544512 mae=17.1159 | train wape=0.265655) params={'iterations': 663, 'learning_rate': 0.01122605232480094, 'depth': 10, 'l2_leaf_reg': 6.637349704025025, 'random_strength': 0.5862898045050632}
+2026-09-08 23:34:45 | INFO     | demand_forecasting.tune_bayesian | Trial 17 val_wape=0.277123 (val wape=0.277123 mape=0.543478 mae=17.2097 | train wape=0.253656) params={'iterations': 1080, 'learning_rate': 0.06466209550959115, 'depth': 7, 'l2_leaf_reg': 16.746709788598, 'random_strength': 0.17273784363854094}
+2026-09-08 23:35:44 | INFO     | demand_forecasting.tune_bayesian | Trial 18 val_wape=0.275902 (val wape=0.275902 mape=0.546333 mae=17.1338 | train wape=0.250229) params={'iterations': 552, 'learning_rate': 0.036761882948179635, 'depth': 10, 'l2_leaf_reg': 12.28157122257612, 'random_strength': 0.2796477216445077}
+2026-09-08 23:36:56 | INFO     | demand_forecasting.tune_bayesian | Trial 19 val_wape=0.274684 (val wape=0.274684 mape=0.545702 mae=17.0582 | train wape=0.260270) params={'iterations': 780, 'learning_rate': 0.014340809918935923, 'depth': 10, 'l2_leaf_reg': 19.402268203383226, 'random_strength': 0.35652291740247716}
+2026-09-08 23:38:16 | INFO     | demand_forecasting.tune_bayesian | Trial 20 val_wape=0.274967 (val wape=0.274967 mape=0.547267 mae=17.0757 | train wape=0.250849) params={'iterations': 1070, 'learning_rate': 0.01832651209709516, 'depth': 10, 'l2_leaf_reg': 5.461664842038984, 'random_strength': 0.13150123906517253}
+2026-09-08 23:39:34 | INFO     | demand_forecasting.tune_bayesian | Trial 21 val_wape=0.275105 (val wape=0.275105 mape=0.546356 mae=17.0843 | train wape=0.258509) params={'iterations': 1037, 'learning_rate': 0.01218153652797039, 'depth': 10, 'l2_leaf_reg': 13.595266188272896, 'random_strength': 0.4939557684542525}
+2026-09-08 23:40:30 | INFO     | demand_forecasting.tune_bayesian | Trial 22 val_wape=0.275877 (val wape=0.275877 mape=0.546718 mae=17.1323 | train wape=0.265418) params={'iterations': 1038, 'learning_rate': 0.013368818298302994, 'depth': 8, 'l2_leaf_reg': 7.741843313266151, 'random_strength': 1.030423316415719}
+2026-09-08 23:41:25 | INFO     | demand_forecasting.tune_bayesian | Trial 23 val_wape=0.275382 (val wape=0.275382 mape=0.544475 mae=17.1015 | train wape=0.259423) params={'iterations': 974, 'learning_rate': 0.025677116683086885, 'depth': 8, 'l2_leaf_reg': 10.26880248483413, 'random_strength': 0.02037933330903227}
+2026-09-08 23:42:29 | INFO     | demand_forecasting.tune_bayesian | Trial 24 val_wape=0.277710 (val wape=0.277710 mape=0.542561 mae=17.2461 | train wape=0.237580) params={'iterations': 1001, 'learning_rate': 0.11065639229452377, 'depth': 8, 'l2_leaf_reg': 3.168507863861445, 'random_strength': 1.4481255720989172}
+2026-09-08 23:42:33 | INFO     | demand_forecasting.tune_bayesian | Best trial:
+{
+  "best_params": {
+    "depth": 8,
+    "iterations": 1007,
+    "l2_leaf_reg": 5.898602410432693,
+    "learning_rate": 0.017172542103877867,
+    "random_strength": 0.09290082543999545
+  },
+  "best_params_path": "artifacts_v2/tuning/catboost_best_params.json",
+  "best_trial_metrics": {
+    "bias": -0.0032718586905869564,
+    "mae": 17.05084892229088,
+    "mape": 0.5484598472620931,
+    "mape_coverage": 0.9965850882185544,
+    "rmse": 26.254306297856754,
+    "smape": 0.2967791822730838,
+    "wape": 0.274565991996408
+  },
+  "best_trial_number": 5,
+  "best_validation_wape": 0.274565991996408,
+  "completed_trials": 25,
+  "mlflow_parent_run_id": "181802f522fa49eead11ca364f980f30",
+  "model": "catboost",
+  "objective_metric": "wape",
+  "trials_path": "artifacts_v2/tuning/catboost_trials.csv"
+}

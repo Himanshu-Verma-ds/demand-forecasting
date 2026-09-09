@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -12,6 +14,39 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 
 from ..features import ml_feature_columns
+
+
+LOGGER = logging.getLogger("demand_forecasting.models.ml")
+
+
+def resolve_n_jobs(n_jobs: int | None) -> int:
+    """Translate the configured n_jobs into a thread count that does not saturate the machine.
+
+    LightGBM, XGBoost and CatBoost all use OpenMP. When the requested thread count equals the
+    number of available CPUs, the worker threads contend with the main thread and OpenMP's
+    busy-wait policy collapses into spin contention. Measured on a 16-CPU WSL2 box, the same
+    100-tree LightGBM fit takes 0.31s at 8 threads and 235s at 16 - roughly 750x slower.
+
+    A configured -1/0/None therefore resolves to half the available CPUs rather than all of
+    them. An explicit positive value is respected, but warned about when it saturates the box.
+    """
+    total = os.cpu_count() or 2
+
+    if n_jobs is None or n_jobs <= 0:
+        return max(1, total // 2)
+
+    requested = int(n_jobs)
+
+    if requested >= total > 1:
+        LOGGER.warning(
+            "n_jobs=%d uses every available CPU (%d); OpenMP contention can make tree training "
+            "orders of magnitude slower. Consider n_jobs=%d.",
+            requested,
+            total,
+            max(1, total // 2),
+        )
+
+    return max(1, requested)
 
 
 @dataclass
@@ -37,6 +72,7 @@ class MLBundle:
 def _estimator(name: str, params: dict[str, Any], n_jobs: int = -1, random_seed: int = 42):
     """Create the configured regression estimator."""
     name = name.lower()
+    n_jobs = resolve_n_jobs(n_jobs)
 
     if name == "lightgbm":
         from lightgbm import LGBMRegressor

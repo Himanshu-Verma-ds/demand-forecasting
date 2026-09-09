@@ -34,6 +34,34 @@ def wape(y_true, y_pred) -> float:
     return float(np.abs(y_true - y_pred).sum() / max(np.abs(y_true).sum(), EPS))
 
 
+def mape(y_true, y_pred) -> float:
+    """Calculate Mean Absolute Percentage Error over rows with non-zero actuals.
+
+    MAPE divides by each actual, so zero-demand rows are undefined and are excluded. Use
+    mape_coverage() to see how many rows that removed. On this dataset the exclusion is small
+    (~0.3% of rows) but MAPE remains unstable on low-demand rows: predicting 3 when the actual
+    is 1 registers as a 200% error. WAPE is the more robust aggregate and stays the recommended
+    selection metric.
+    """
+    y_true, y_pred = _validate_arrays(y_true, y_pred)
+    mask = np.abs(y_true) > EPS
+
+    if not mask.any():
+        return float("nan")
+
+    return float((np.abs(y_true[mask] - y_pred[mask]) / np.abs(y_true[mask])).mean())
+
+
+def mape_coverage(y_true) -> float:
+    """Fraction of rows that MAPE is actually computed on (those with a non-zero actual)."""
+    y_true = np.asarray(y_true, dtype=float)
+
+    if y_true.size == 0:
+        return float("nan")
+
+    return float((np.abs(y_true) > EPS).mean())
+
+
 def smape(y_true, y_pred) -> float:
     """Calculate Symmetric Mean Absolute Percentage Error."""
     y_true, y_pred = _validate_arrays(y_true, y_pred)
@@ -54,6 +82,8 @@ def regression_metrics(y_true, y_pred) -> dict[str, float]:
 
     return {
         "wape": wape(y_true, y_pred),
+        "mape": mape(y_true, y_pred),
+        "mape_coverage": mape_coverage(y_true),
         "mae": float(mean_absolute_error(y_true, y_pred)),
         "rmse": float(mean_squared_error(y_true, y_pred) ** 0.5),
         "smape": smape(y_true, y_pred),

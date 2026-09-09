@@ -101,7 +101,13 @@ def middle_out_allocate(parent_forecast: pd.DataFrame, shares: pd.DataFrame, par
     if missing_share_columns:
         raise ValueError(f"Missing share columns: {missing_share_columns}")
 
-    out = parent_forecast.merge(shares, on=parent_cols, how="left", validate="one_to_many")
+    if shares.duplicated(subset=child_cols).any():
+        raise ValueError("shares must contain exactly one row per child")
+
+    # The parent forecast holds one row per (date, parent), so the parent keys repeat across the
+    # horizon. Only the share table needs to be unique, which is checked above; the merge itself
+    # is legitimately many-to-many on parent_cols.
+    out = parent_forecast.merge(shares, on=parent_cols, how="left", validate="many_to_many")
 
     if out["share"].isna().any():
         missing_parents = out.loc[out["share"].isna(), parent_cols].drop_duplicates().to_dict("records")

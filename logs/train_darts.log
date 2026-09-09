@@ -1,0 +1,330 @@
+2026-09-09 05:23:16 | INFO     | demand_forecasting.train_darts | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "model": "tide",
+  "package_version": "0.1.0",
+  "params_json": null,
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T05:23:16.061251+00:00",
+  "step": "train_darts",
+  "tuned_params": null,
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 05:23:16 | INFO     | demand_forecasting.train_darts | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 05:23:26 | INFO     | demand_forecasting.train_darts | Darts training setup:
+{
+  "batch_size": 256,
+  "epochs": 50,
+  "future_cols": [
+    "is_holiday",
+    "is_weekend",
+    "dow_sin",
+    "dow_cos",
+    "month_sin",
+    "month_cos",
+    "promo_flag"
+  ],
+  "horizon": 14,
+  "lookback": 56,
+  "model": "tide",
+  "past_cols": [
+    "stock_out_flag",
+    "stock_on_hand"
+  ],
+  "series_count": 1005,
+  "train_end": "2023-12-03"
+}
+2026-09-09 05:32:48 | INFO     | demand_forecasting.train_darts | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "model": "tide",
+  "package_version": "0.1.0",
+  "params_json": "artifacts_v2/tuning/tide_best_params.json",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T05:32:48.029362+00:00",
+  "step": "train_darts",
+  "tuned_params": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "epochs": 12,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "lookback": 56
+  },
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 05:32:48 | INFO     | demand_forecasting.train_darts | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 12,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 05:32:57 | INFO     | demand_forecasting.train_darts | Darts training setup:
+{
+  "batch_size": 256,
+  "epochs": 12,
+  "future_cols": [
+    "is_holiday",
+    "is_weekend",
+    "dow_sin",
+    "dow_cos",
+    "month_sin",
+    "month_cos",
+    "promo_flag"
+  ],
+  "horizon": 14,
+  "lookback": 56,
+  "model": "tide",
+  "past_cols": [
+    "stock_out_flag",
+    "stock_on_hand"
+  ],
+  "series_count": 1005,
+  "train_end": "2023-12-03"
+}
+2026-09-09 05:52:54 | INFO     | demand_forecasting.train_darts | Forecasting validation window from origin 2023-12-03
+2026-09-09 05:53:51 | INFO     | demand_forecasting.train_darts | Validation metrics (model selection):
+{
+  "bias": 0.032864665580080096,
+  "mae": 17.153659133743247,
+  "mape": 0.5534530258312362,
+  "mape_coverage": 0.9965850882185544,
+  "rmse": 26.36774259037493,
+  "smape": 0.3003287253472482,
+  "wape": 0.2762215217488227
+}
+2026-09-09 05:53:53 | INFO     | demand_forecasting.train_darts | Refitting on train plus validation through 2023-12-17
+2026-09-09 06:15:39 | INFO     | demand_forecasting.train_darts | Test metrics (final reporting only):
+{
+  "bias": -2.2462986634403944e-05,
+  "mae": 16.81494552432906,
+  "mape": 0.5262837112109398,
+  "mape_coverage": 0.997367672168469,
+  "rmse": 25.848674128330618,
+  "smape": 0.2940346351651045,
+  "wape": 0.2694243269717083
+}
+2026-09-09 06:15:50 | INFO     | demand_forecasting.train_darts | Saved artifacts:
+{
+  "metadata": "artifacts_v2/tide/metadata.joblib",
+  "metrics": "artifacts_v2/tide/metrics.json",
+  "mlflow_run_id": "cc14be10653d45fa98f0f6ec11a90465",
+  "model": "artifacts_v2/tide/model.pt",
+  "test_predictions": "artifacts_v2/tide/test_predictions.csv",
+  "training_series": 1005,
+  "validation_predictions": "artifacts_v2/tide/validation_predictions.csv"
+}
+2026-09-09 06:15:50 | INFO     | demand_forecasting.train_darts | Finished tide global training run cc14be10653d45fa98f0f6ec11a90465

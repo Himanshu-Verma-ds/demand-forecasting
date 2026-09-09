@@ -1,7 +1,26 @@
 selected_model:
-  name: null
-  family: null
-  artifact_path: null
-  selected_at: null
-  metrics: {}
-  notes: "Run src/demand_forecasting/select_model.py after evaluation."
+  name: transformer
+  family: dl
+  artifact_path: artifacts/transformer/model.pt
+  selected_at: '2026-09-08T22:28:45.972543+00:00'
+  selection_metric: validation_wape
+  selection_value: 0.2648181843655995
+  validation_metrics:
+    wape: 0.26481818436559956
+    mape: 0.5470421620079345
+    mape_coverage: 0.9965850882185544
+    mae: 16.445499388548754
+    rmse: 25.116563064698976
+    smape: 0.2898262935410541
+    bias: 0.02258996014637133
+  test_metrics:
+    wape: 0.26903910418411375
+    mape: 0.5446528270776463
+    mape_coverage: 0.997367672168469
+    mae: 16.790903522402438
+    rmse: 25.71218830111244
+    smape: 0.2935902739296448
+    bias: 0.027486848420025897
+  notes: Selected using validation performance only. Test metrics are stored for final
+    unbiased reporting and were not used for model selection.
+  model_type: transformer

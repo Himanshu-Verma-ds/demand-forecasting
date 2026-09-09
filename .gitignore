@@ -1,30 +1,69 @@
+# ---- secrets -------------------------------------------------------------
+.env
+*.pem
+*.key
+
+# ---- environments --------------------------------------------------------
 venv/
 .venv/
+env/
 __pycache__/
 *.py[cod]
+*.pyo
 .ipynb_checkpoints/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-.env
-
-logs/
-mlruns/
-artifacts/*
-!artifacts/.gitkeep
-reports/*.csv
-reports/*.json
-!reports/model_comparison_template.csv
-!reports/dataset_profile.json
-
+# ---- data (DVC-tracked; only the .dvc pointers belong in Git) -------------
 data/raw/*
 !data/raw/.gitkeep
 !data/raw/*.dvc
 data/processed/*
 !data/processed/.gitkeep
-logs
+data/interim/
+
+# ---- experiment output (regenerable; too large for Git) ------------------
+# artifacts/ and artifacts_v2/ hold the trained models, per-row predictions and
+# the 80 Optuna trial binaries - ~800 MB. The promoted models are published in
+# final_conclusion/inference_bundle/ instead, which is what a reviewer needs.
+artifacts/*
+artifacts_v2/
+!artifacts/.gitkeep
+
+# Excluded by an earlier deliberate choice; remove this line to publish it.
+# Note: README.md and architecture_flow.md both link to it.
 explanation.md
-__pycache__/
-*.pyc
+
+# ---- tracking stores -----------------------------------------------------
 mlruns/
-artifacts/
-data/processed/
+mlflow.db
+catboost_info/
+*.optuna.db
+
+# ---- logs ----------------------------------------------------------------
+# logs/ is deliberately COMMITTED (~313 KB): it is the run evidence for v1/v2,
+# showing the settings used, progress and metrics for every step. Rotated
+# copies from earlier days are not.
+logs/*.log.*
+
+# ---- scratch -------------------------------------------------------------
+# Throwaway analysis scripts and their output use a leading underscore.
+_*.py
+_*.sh
+_*.txt
+_v2/
+_v3/
+_audit/
+_rt/
+
+# ---- OS / editor ---------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ---- build ---------------------------------------------------------------
+dist/
+build/
+*.egg-info/

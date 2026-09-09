@@ -1,0 +1,221 @@
+registered_at: '2026-09-09T06:52:05.532693+00:00'
+selection_metric: validation_wape
+artifacts_dir: artifacts
+champion: transformer
+model_count: 5
+models:
+- name: transformer
+  family: dl
+  model_type: transformer
+  artifact_path: artifacts/transformer/model.pt
+  trained: true
+  train_metrics: {}
+  validation_metrics:
+    wape: 0.264818
+    mape: 0.547042
+    mae: 16.445499
+    rmse: 25.116563
+    smape: 0.289826
+    bias: 0.02259
+  test_metrics:
+    wape: 0.269039
+    mape: 0.544653
+    mae: 16.790904
+    rmse: 25.712188
+    smape: 0.29359
+    bias: 0.027487
+  tuned_params:
+    lookback: 112
+    learning_rate: 0.0023628864184236428
+    dropout: 0.0913841307520112
+    batch_size: 256
+    transformer_d_model: 128
+    transformer_heads: 2
+    transformer_layers: 2
+    embedding_dim: 16
+    weight_decay: 0.0008105016126411582
+  params_path: artifacts/tuning/transformer_best_params.json
+  validation_totals:
+    actual_units: 872893.0
+    predicted_units: 892611.62
+    bias_pct: 2.259
+  test_totals:
+    actual_units: 877244.0
+    predicted_units: 901356.67
+    bias_pct: 2.7487
+  rank_by_validation: 1
+  is_champion: true
+- name: lstm
+  family: dl
+  model_type: lstm
+  artifact_path: artifacts/lstm/model.pt
+  trained: true
+  train_metrics: {}
+  validation_metrics:
+    wape: 0.265044
+    mape: 0.53837
+    mae: 16.459496
+    rmse: 25.185715
+    smape: 0.28927
+    bias: 0.012061
+  test_metrics:
+    wape: 0.268433
+    mape: 0.517968
+    mae: 16.753106
+    rmse: 25.771828
+    smape: 0.291284
+    bias: -0.004484
+  tuned_params:
+    lookback: 28
+    learning_rate: 0.0002049268011541737
+    dropout: 0.09127267288786131
+    batch_size: 128
+    hidden_size: 64
+    num_layers: 2
+    embedding_dim: 16
+    weight_decay: 3.489018845491386e-05
+  params_path: artifacts/tuning/lstm_best_params.json
+  validation_totals:
+    actual_units: 872893.0
+    predicted_units: 883420.74
+    bias_pct: 1.2061
+  test_totals:
+    actual_units: 877244.0
+    predicted_units: 873310.47
+    bias_pct: -0.4484
+  rank_by_validation: 2
+  is_champion: false
+- name: xgboost
+  family: ml
+  model_type: xgboost
+  artifact_path: artifacts/xgboost/model.joblib
+  trained: true
+  train_metrics:
+    wape: 0.26441
+    mape: 0.5539
+    mae: 15.638485
+    rmse: 23.534242
+    smape: 0.289439
+    bias: -3.0e-06
+  validation_metrics:
+    wape: 0.271578
+    mape: 0.539542
+    mae: 16.865272
+    rmse: 25.826006
+    smape: 0.295031
+    bias: -0.004552
+  test_metrics:
+    wape: 0.270565
+    mape: 0.522567
+    mae: 16.886108
+    rmse: 25.949436
+    smape: 0.293425
+    bias: -0.004161
+  tuned_params:
+    n_estimators: 425
+    learning_rate: 0.022059149678071027
+    max_depth: 7
+    min_child_weight: 3.920673972242136
+    subsample: 0.935552788417904
+    colsample_bytree: 0.7599021346475079
+    reg_lambda: 0.16283124535115095
+  params_path: artifacts/tuning/xgboost_best_params.json
+  validation_totals:
+    actual_units: 872893.0
+    predicted_units: 868920.01
+    bias_pct: -0.4552
+  test_totals:
+    actual_units: 877244.0
+    predicted_units: 873593.48
+    bias_pct: -0.4161
+  rank_by_validation: 3
+  is_champion: false
+- name: catboost
+  family: ml
+  model_type: catboost
+  artifact_path: artifacts/catboost/model.joblib
+  trained: true
+  train_metrics:
+    wape: 0.266382
+    mape: 0.560841
+    mae: 15.755149
+    rmse: 23.974153
+    smape: 0.289547
+    bias: 0.007787
+  validation_metrics:
+    wape: 0.271929
+    mape: 0.546116
+    mae: 16.887058
+    rmse: 25.940256
+    smape: 0.294594
+    bias: 0.001417
+  test_metrics:
+    wape: 0.268329
+    mape: 0.528338
+    mae: 16.7466
+    rmse: 25.692076
+    smape: 0.291316
+    bias: 0.00993
+  tuned_params:
+    iterations: 1007
+    learning_rate: 0.017172542103877867
+    depth: 8
+    l2_leaf_reg: 5.898602410432693
+    random_strength: 0.09290082543999545
+  params_path: artifacts/tuning/catboost_best_params.json
+  validation_totals:
+    actual_units: 872893.0
+    predicted_units: 874129.52
+    bias_pct: 0.1417
+  test_totals:
+    actual_units: 877244.0
+    predicted_units: 885954.61
+    bias_pct: 0.993
+  rank_by_validation: 4
+  is_champion: false
+- name: lightgbm
+  family: ml
+  model_type: lightgbm
+  artifact_path: artifacts/lightgbm/model.joblib
+  trained: true
+  train_metrics:
+    wape: 0.265911
+    mape: 0.560217
+    mae: 15.727244
+    rmse: 23.949439
+    smape: 0.289145
+    bias: 0.007636
+  validation_metrics:
+    wape: 0.272078
+    mape: 0.545789
+    mae: 16.896349
+    rmse: 25.964801
+    smape: 0.294017
+    bias: 0.001913
+  test_metrics:
+    wape: 0.270898
+    mape: 0.532897
+    mae: 16.906911
+    rmse: 26.084139
+    smape: 0.292663
+    bias: 0.012634
+  tuned_params:
+    n_estimators: 409
+    learning_rate: 0.03822726574649208
+    num_leaves: 38
+    max_depth: 14
+    min_child_samples: 33
+    subsample: 0.8987566853061946
+    colsample_bytree: 0.7935133228268233
+    reg_lambda: 0.12030178871154672
+  params_path: artifacts/tuning/lightgbm_best_params.json
+  validation_totals:
+    actual_units: 872893.0
+    predicted_units: 874563.09
+    bias_pct: 0.1913
+  test_totals:
+    actual_units: 877244.0
+    predicted_units: 888326.9
+    bias_pct: 1.2634
+  rank_by_validation: 5
+  is_champion: false

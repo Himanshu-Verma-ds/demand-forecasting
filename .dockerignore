@@ -1,33 +1,68 @@
+# The Dockerfile does `COPY . .`, so anything not listed here lands in the image.
+# Keep the image to source + configs; data, artifacts and logs are mounted at runtime.
+
+# ---- secrets (never bake credentials into an image) ----------------------
+.env
+*.pem
+*.key
+
+# ---- version control -----------------------------------------------------
 .git
 .gitignore
+.dvc
+.dvcignore
 
+# ---- environments --------------------------------------------------------
+venv
+.venv
+env
 __pycache__
 *.py[cod]
 *.pyo
 *.pyd
-
 .pytest_cache
 .mypy_cache
 .ruff_cache
 
-.venv
-venv
-env
-
-.ipynb_checkpoints
-notebooks
-
-mlruns
-logs
-reports
-
+# ---- data (mounted at runtime via -v, not copied) ------------------------
+data/raw
 data/processed
 data/interim
 
+# ---- experiment output (mounted at runtime) ------------------------------
+artifacts
+artifacts_v2
+mlruns
+mlflow.db
+catboost_info
+reports
+
+# ---- deliverables not needed by the serving image ------------------------
+# ~60 MB of model binaries and reports; the API loads from the mounted
+# artifacts/ path named in the model registry instead.
+final_conclusion
+problem_statement
+notebooks
+.ipynb_checkpoints
+
+# ---- logs (mounted so they survive the container) ------------------------
+logs
 *.log
 
-.DS_Store
+# ---- not needed at runtime -----------------------------------------------
+tests
+scripts
 
+# ---- scratch -------------------------------------------------------------
+_*.py
+_*.sh
+_*.txt
+
+# ---- OS / editor / build -------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea
+.vscode
 dist
 build
 *.egg-info
