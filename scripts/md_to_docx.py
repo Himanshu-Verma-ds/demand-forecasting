@@ -23,6 +23,10 @@ from docx.shared import Pt, RGBColor
 CODE_FONT = "Consolas"
 BODY_FONT = "Calibri"
 
+# Everything prints black: this is a document to be read and marked up, not a web page.
+BLACK = RGBColor(0x00, 0x00, 0x00)
+HEADER_FILL = "F2F2F2"  # neutral grey for table headers, not a colour accent
+
 # Inline: `code`, **bold**, *italic*, [text](url). Order matters - code first so its
 # contents are never re-parsed as emphasis.
 INLINE = re.compile(
@@ -55,26 +59,30 @@ def add_inline(paragraph, text: str) -> None:
             run = paragraph.add_run(token[1:-1])
             run.font.name = CODE_FONT
             run.font.size = Pt(9)
-            run.font.color.rgb = RGBColor(0xC0, 0x34, 0x1D)
+            run.font.color.rgb = BLACK
         elif token.startswith("**"):
-            paragraph.add_run(token[2:-2]).bold = True
+            run = paragraph.add_run(token[2:-2])
+            run.bold = True
+            run.font.color.rgb = BLACK
         elif token.startswith("*"):
-            paragraph.add_run(token[1:-1]).italic = True
+            run = paragraph.add_run(token[1:-1])
+            run.italic = True
+            run.font.color.rgb = BLACK
         else:
             label, url = re.match(r"\[([^\]]+)\]\(([^)]+)\)", token).groups()
             run = paragraph.add_run(label)
-            run.font.color.rgb = RGBColor(0x0B, 0x5C, 0xAB)
-            run.font.underline = True
-            # Keep the target visible: .docx hyperlink fields are fragile to hand-build.
+            run.font.color.rgb = BLACK
+            # Show the target inline rather than as a blue hyperlink field.
             if url.startswith("http"):
-                hint = paragraph.add_run(f" <{url}>")
-                hint.font.size = Pt(7)
-                hint.font.color.rgb = RGBColor(0x70, 0x70, 0x70)
+                hint = paragraph.add_run(f" ({url})")
+                hint.font.size = Pt(8)
+                hint.font.color.rgb = BLACK
 
         pos = match.end()
 
     if pos < len(text):
-        paragraph.add_run(text[pos:])
+        run = paragraph.add_run(text[pos:])
+        run.font.color.rgb = BLACK
 
 
 def add_code_block(doc: Document, lines: list[str]) -> None:
@@ -85,8 +93,8 @@ def add_code_block(doc: Document, lines: list[str]) -> None:
 
     run = paragraph.add_run("\n".join(lines))
     run.font.name = CODE_FONT
-    run.font.size = Pt(8)
-    run.font.color.rgb = RGBColor(0x1A, 0x1A, 0x1A)
+    run.font.size = Pt(8.5)
+    run.font.color.rgb = BLACK
 
 
 def is_separator(row: str) -> bool:
@@ -113,13 +121,14 @@ def add_table(doc: Document, rows: list[str]) -> None:
     table.alignment = WD_TABLE_ALIGNMENT.LEFT
 
     for i, cell in enumerate(table.rows[0].cells):
-        shade(cell, "E7EEF7")
+        shade(cell, HEADER_FILL)
         cell.text = ""
         paragraph = cell.paragraphs[0]
         add_inline(paragraph, header[i] if i < len(header) else "")
         for run in paragraph.runs:
             run.bold = True
             run.font.size = Pt(9)
+            run.font.color.rgb = BLACK
 
     for record in body:
         cells = table.add_row().cells
@@ -129,6 +138,7 @@ def add_table(doc: Document, rows: list[str]) -> None:
             add_inline(paragraph, record[i] if i < len(record) else "")
             for run in paragraph.runs:
                 run.font.size = Pt(9)
+                run.font.color.rgb = BLACK
 
     doc.add_paragraph()
 
@@ -139,7 +149,23 @@ def convert(md_path: Path, docx_path: Path) -> dict:
 
     normal = doc.styles["Normal"]
     normal.font.name = BODY_FONT
-    normal.font.size = Pt(10)
+    normal.font.size = Pt(10.5)
+    normal.font.color.rgb = BLACK
+    normal.paragraph_format.space_after = Pt(8)
+    normal.paragraph_format.line_spacing = 1.15
+
+    # Word's built-in Heading and List styles carry a blue theme colour; override at the
+    # style level so nothing inherits it even where runs are not set explicitly.
+    for name in ["Title", "Heading 1", "Heading 2", "Heading 3", "Heading 4",
+                 "List Bullet", "List Number"]:
+        try:
+            style = doc.styles[name]
+        except KeyError:
+            continue
+        style.font.color.rgb = BLACK
+        style.font.name = BODY_FONT
+        if name.startswith("List"):
+            style.font.size = Pt(10.5)
 
     stats = {"headings": 0, "tables": 0, "code_blocks": 0, "paragraphs": 0, "list_items": 0}
     i = 0
@@ -174,12 +200,24 @@ def convert(md_path: Path, docx_path: Path) -> dict:
             stats["tables"] += 1
             continue
 
-        # heading
+        # heading - bold + underlined, black (Word's built-in Heading styles are blue)
         heading = re.match(r"^(#{1,6})\s+(.*)", stripped)
         if heading:
-            level = len(heading.group(1))
-            paragraph = doc.add_heading("", level=min(level, 4))
+            level = min(len(heading.group(1)), 4)
+            paragraph = doc.add_heading("", level=level)
             add_inline(paragraph, heading.group(2))
+
+            sizes = {1: 17, 2: 13.5, 3: 11.5, 4: 10.5}
+            paragraph.paragraph_format.space_before = Pt(16 if level <= 2 else 12)
+            paragraph.paragraph_format.space_after = Pt(6)
+
+            for run in paragraph.runs:
+                run.font.name = BODY_FONT
+                run.font.size = Pt(sizes[level])
+                run.font.color.rgb = BLACK
+                run.bold = True
+                run.underline = True
+
             stats["headings"] += 1
             i += 1
             continue
@@ -189,7 +227,7 @@ def convert(md_path: Path, docx_path: Path) -> dict:
             rule = doc.add_paragraph()
             rule.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = rule.add_run("─" * 40)
-            run.font.color.rgb = RGBColor(0xBB, 0xBB, 0xBB)
+            run.font.color.rgb = BLACK
             i += 1
             continue
 
@@ -216,6 +254,8 @@ def convert(md_path: Path, docx_path: Path) -> dict:
             content = bullet.group(1) if bullet else numbered.group(2)
             paragraph = doc.add_paragraph(style=style)
             add_inline(paragraph, content)
+            for run in paragraph.runs:
+                run.font.color.rgb = BLACK
             stats["list_items"] += 1
             i += 1
             continue
