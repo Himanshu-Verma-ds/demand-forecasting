@@ -2254,3 +2254,731 @@ The guard was right — the Transformer was trained with a **tuned lookback of 1
 (§Q10), it is a property of the *artifact*, not of global config. `inference_dl` and
 `inference_darts` now take lookback from the checkpoint/metadata and still validate the feature
 contract and horizon strictly. Without this, any tuned sequence model would have been undeployable.
+
+---
+
+# Part II — Technical deep dive
+
+Everything above describes the system as designed. This part is the walkthrough: the data as it
+actually is, the questions the EDA answered, exactly how each model was fed and trained, what the
+numbers mean, and how a forecast is produced for dates that do not exist yet. Written to be read
+end to end by someone who needs to rebuild or defend this work.
+
+---
+
+## 10. The dataset, column by column
+
+1,100,000 rows · 2021-01-01 to 2023-12-31 · 1,095 distinct dates · 13 stores · 102 SKUs ·
+**1,005 store-SKU series** · 33 columns · **zero missing values anywhere**.
+
+Every series is a daily time series of `units_sold` for one `(store_id, sku_id)` pair. One row per
+pair per date, verified rather than assumed.
+
+### 10.1 Numeric columns
+
+| Column | Mean | Median | Std | Min | Max | P05 | P95 | Distinct |
+|---|---|---|---|---|---|---|---|---|
+| **units_sold** (target) | 59.20 | 49 | 45.01 | 0 | 704 | 10 | 142 | 516 |
+| list_price | 7.71 | 7.38 | 4.25 | 1.08 | 14.80 | 1.44 | 14.15 | 99 |
+| discount_pct | 0.015 | 0.00 | 0.055 | 0.00 | 0.30 | 0.00 | 0.15 | 5 |
+| promo_flag | 0.080 | 0 | 0.272 | 0 | 1 | 0 | 1 | 2 |
+| gross_sales | 440.68 | 282.88 | 441.80 | 0 | 6,593.90 | 44.91 | 1,344.25 | 15,354 |
+| net_sales | 429.95 | 277.86 | 422.50 | 0 | 5,144.94 | 44.88 | 1,307.25 | 29,938 |
+| stock_on_hand | 299.48 | 300 | 80.07 | 0 | 698 | 168 | 431 | 640 |
+| stock_out_flag | 0.030 | 0 | 0.171 | 0 | 1 | 0 | 0 | 2 |
+| lead_time_days | 6.50 | 6 | 2.01 | 1 | 17 | 3 | 10 | 17 |
+| purchase_cost | 4.63 | 4.35 | 2.66 | 0.49 | 11.10 | 0.84 | 9.18 | 1,062 |
+| margin_pct | 0.385 | 0.389 | 0.102 | **−0.05** | 0.55 | 0.25 | 0.53 | 601 |
+| temperature | 12.82 | 12.84 | 3.37 | 1.80 | 22.83 | 7.25 | 18.53 | 710 |
+| rain_mm | 2.90 | 2.57 | 2.10 | 0.00 | 11.58 | 0.23 | 6.85 | 559 |
+| is_weekend | 0.287 | 0 | 0.452 | 0 | 1 | 0 | 1 | 2 |
+| is_holiday | 0.014 | 0 | 0.116 | 0 | 1 | 0 | 0 | 2 |
+| latitude | 46.31 | 45.46 | 4.60 | 40.42 | 52.53 | — | — | 13 |
+| longitude | 9.03 | 9.20 | 6.73 | −3.68 | 21.00 | — | — | 13 |
+
+Calendar integers (`year`, `month`, `day`, `weekofyear`, `weekday`) are also present and span their
+natural ranges.
+
+### 10.2 Categorical columns and cardinality
+
+| Column | Distinct | Most common | Share |
+|---|---|---|---|
+| store_id | 13 | STORE0001 (87,600 rows) | 8.0% |
+| sku_id | 102 | SKU0001 (14,235 rows) | 1.3% |
+| sku_name | 102 | BrandA Soda | 1.3% |
+| country | 7 | Italy (350,400 rows) | 31.9% |
+| city | 9 | Berlin (175,200 rows) | 15.9% |
+| channel | 4 | Hypermarket (525,600 rows) | 47.8% |
+| category | 5 | Beverages (266,085 rows) | 24.2% |
+| subcategory | 17 | Soda (71,175 rows) | 6.5% |
+| brand | 6 | BrandF (187,245 rows) | 17.0% |
+| supplier_id | 60 | S037 (18,579 rows) | 1.7% |
+
+Cardinality is low to moderate throughout. That is what makes both ordinal encoding for the trees
+and modest embedding tables for the neural models practical — a 102-way SKU embedding is cheap,
+whereas 100,000 SKUs would have forced a different design.
+
+### 10.3 The three facts that shaped everything
+
+**Demand is right-skewed.** Mean 59.2 against median 49, max 704, standard deviation 45.0. The mean
+sits above the median and the top of the range is 14× it. Squared-error objectives would let a
+handful of spikes dominate the gradient, so every model optimises absolute error instead and WAPE
+is the decision metric.
+
+**Promotions are rare and large.** 88,257 rows carry a promotion, 8.02% of the data. Mean demand on
+those rows is **104.27** against **55.26** on non-promotional rows — an 89% lift overall, and 63% to
+131% depending on category. Rare plus large is exactly the combination an aggregate metric hides.
+
+**Stockouts are not zero-inventory events.** 33,114 rows are flagged, 3.01% of the data. Of those,
+**33,110 still show positive `stock_on_hand`** — only 4 rows have zero inventory. The flag and the
+inventory column measure different things, so a stockout cannot be re-derived from stock levels and
+the flag has to be trusted as given.
+
+---
+
+## 11. What the EDA asked, and what it settled
+
+The notebook (`notebooks/01_eda.ipynb`) is organised as questions, because each answer became a
+configuration value. This is the full chain from finding to setting.
+
+| # | Question | What the data said | What it fixed |
+|---|---|---|---|
+| 1 | Are there missing values or duplicate keys? | None; exactly one row per (store, SKU, date) | Lags computed directly, no imputation layer beneath them |
+| 2 | Is a stockout the same as zero inventory? | No — 33,110 of 33,114 stockouts have positive stock | The flag is authoritative and irreducible |
+| 3 | Is the product/store hierarchy stable over time? | Each SKU maps to exactly one category/subcategory/brand; each store to one country/city/channel | Static attributes encoded once; no effective-dated master data needed |
+| 4 | Is history dense enough for bottom-level forecasting? | Median series has all 1,095 days; ≥75% complete | A single **global** model over all series, not ~1,000 local ones |
+| 5 | Are any series dead? | One: STORE0013/SKU0073 ends 2022-09-12, explaining a 475-row shortfall | Active forecast set fixed at **1,004** series |
+| 6 | What shape is the target? | Right-skewed, median 49 / mean 59 / max 704 | L1 objectives; WAPE over RMSE for decisions |
+| 7 | Is there weekly seasonality? | Autocorrelation peaks cleanly at **7, 14, 21, 28** | Demand lags 1/7/14/28; rolling windows 7/14/28 |
+| 8 | Is there annual seasonality? | Peaks Jun–Aug and Oct–Dec, repeating all three years | Cyclical day-of-week, month and day-of-year encodings |
+| 9 | Do weekends differ? | Yes, Saturdays and Sundays are consistently higher | `is_weekend` as an explicit feature |
+| 10 | Do promotions matter, and how much? | 63–131% lift by category; demand rises monotonically with discount depth | Promotion flag as a **known-future** covariate, plus a dedicated promo error slice |
+| 11 | Is promo lift causal? | No — promotions are scheduled, plausibly onto already-strong periods | Used as a covariate; no causal uplift claimed |
+| 12 | How common are stockouts? | 3.01% of rows | Configurable censored-demand target with down-weighting |
+| 13 | Are price and weather known 14 days ahead? | Present historically, but not committed | Both excluded from the future covariate set |
+| 14 | How heterogeneous are series? | Scale varies widely; shared seasonal timing, series-specific magnitude | A *conditional* global model with identity features, not one unconditioned curve |
+
+**Why 7/14/28 and not something else.** The autocorrelation peaks are the entire justification. Lag
+1 captures short-run level, lag 7 is the same weekday last week (the dominant peak), and 14 and 28
+confirm the weekly signal is stable while spanning a monthly cycle. Rolling windows use the same
+periods so every trailing statistic covers a whole number of weeks.
+
+**Why cyclical encodings.** As plain integers, Sunday (6) sits six units from Monday (0) and December
+(12) twelve units from January (1). Sine/cosine pairs place them on a circle, so adjacent periods are
+adjacent in feature space. The same argument applies to day-of-year across the year boundary.
+
+---
+
+## 12. Building the training set
+
+### 12.1 The three steps
+
+```text
+read_raw()             parse dates, sort by (store_id, sku_id, date)
+add_stockout_target()  produce demand_target, sample_weight, stockout_imputed_amount
+build_causal_features()  lags, rollings, calendar, promo, price, cross-series, identity
+```
+
+The identical three run at inference. That is the mechanism preventing train/serve skew: the two
+paths are the same code, so they cannot drift apart.
+
+Output: **1,100,000 rows × 71 columns**, of which **43 numeric + 9 categorical = 52 features** reach
+the tree models.
+
+### 12.2 How many series, and how the panel is shaped
+
+The panel stays **long**, not split per series. One row per (store, SKU, date), with identity carried
+as features. A single global model therefore sees **all 1,005 series at once** (1,004 forecastable),
+sharing weekly and promotional structure across them while conditioning on identity for scale.
+
+Every group-wise calculation is scoped by `groupby(["store_id", "sku_id"])`, so no series can leak
+into another's lags. This is the single most important implementation detail in feature construction.
+
+### 12.3 Split sizes
+
+| Split | Dates | Rows | Series | Days |
+|---|---|---|---|---|
+| Train | 2021-01-01 → 2023-12-03 | **1,071,888** | 1,005 | 1,067 |
+| Validation | 2023-12-04 → 2023-12-17 | **14,056** | 1,004 | 14 |
+| Test | 2023-12-18 → 2023-12-31 | **14,056** | 1,004 | 14 |
+
+14,056 = 1,004 active series × 14 days. Training rows drop to **1,043,748** after removing rows with
+no 28-day warm-up lag (the first 28 days of each series).
+
+### 12.4 The 52 model features and their ranges
+
+Measured on the full feature table. Nulls are warm-up rows at the start of each series, dropped
+before training.
+
+| Feature | Mean | Median | Std | Min | Max | Nulls |
+|---|---|---|---|---|---|---|
+| demand_lag_1 | 59.19 | 49 | 45.00 | 0 | 704 | 1,005 |
+| demand_lag_7 | 59.17 | 49 | 44.98 | 0 | 704 | 7,035 |
+| demand_lag_14 | 59.16 | 49 | 44.95 | 0 | 704 | 14,070 |
+| demand_lag_28 | 59.12 | 49 | 44.91 | 0 | 704 | 28,140 |
+| demand_roll_mean_7 | 59.18 | 54.14 | 36.52 | 2.86 | 344.00 | 3,015 |
+| demand_roll_std_7 | 22.46 | 18.23 | 17.35 | 0.38 | 234.52 | 3,015 |
+| demand_roll_max_7 | 93.51 | 83 | 62.79 | 4 | 704 | 3,015 |
+| demand_roll_mean_14 | 59.17 | 54.86 | 35.70 | 3.43 | 273.29 | 3,015 |
+| demand_roll_std_14 | 23.16 | 19.85 | 16.43 | 0.45 | 189.60 | 3,015 |
+| demand_roll_max_14 | 104.76 | 94 | 69.89 | 6 | 704 | 3,015 |
+| demand_roll_mean_28 | 59.15 | 55.18 | 35.21 | 4.21 | 272.33 | 3,015 |
+| demand_roll_std_28 | 23.57 | 20.77 | 15.98 | 0.45 | 182.83 | 3,015 |
+| demand_roll_max_28 | 115.46 | 103 | 76.95 | 7 | 704 | 3,015 |
+| stockout_lag_1 / _7 / _14 | 0.030 | 0 | 0.171 | 0 | 1 | 1,005 / 7,035 / 14,070 |
+| stockout_rate_28 | 0.030 | 0.036 | 0.033 | 0 | 0.375 | 7,035 |
+| stock_on_hand_lag_1 | 299.48 | 300 | 80.07 | 0 | 698 | 1,005 |
+| stock_on_hand_mean_7 | 299.47 | 299.57 | 30.35 | 145.43 | 470.86 | 3,015 |
+| list_price_lag_1 | 7.71 | 7.38 | 4.25 | 1.08 | 14.80 | 1,005 |
+| discount_pct_lag_1 | 0.015 | 0 | 0.055 | 0 | 0.30 | 1,005 |
+| list_price_mean_28 | 7.71 | 7.38 | 4.25 | 1.08 | 14.80 | 7,035 |
+| discount_pct_mean_28 | 0.015 | 0 | 0.021 | 0 | 0.129 | 7,035 |
+| promo_prev_1 | 0.080 | 0 | 0.272 | 0 | 1 | 1,005 |
+| promo_rate_28 | 0.080 | 0 | 0.110 | 0 | 0.600 | 7,035 |
+| store_demand_mean_lag_1 | 59.19 | 59.86 | 11.71 | 25.86 | 95.36 | 1,005 |
+| sku_demand_mean_lag_1 | 59.19 | 54.75 | 37.40 | 4.27 | 402.11 | 1,005 |
+| series_age_days | 546.87 | 547 | 316.09 | 0 | 1,094 | 0 |
+| promo_flag (known future) | 0.080 | 0 | 0.272 | 0 | 1 | 0 |
+| is_weekend / is_holiday | 0.287 / 0.014 | 0 | — | 0 | 1 | 0 |
+| dow_sin / dow_cos | ~0 | — | 0.707 | −1 | 1 | 0 |
+| month_sin / month_cos | ~0 | — | 0.707 | −1 | 1 | 0 |
+| doy_sin / doy_cos | ~0 | — | 0.707 | −1 | 1 | 0 |
+| year, month, day, weekofyear, weekday | calendar integers | | | | | 0 |
+| lead_time_days | 6.50 | 6 | 2.01 | 1 | 17 | 0 |
+
+**Categoricals (9):** store_id, sku_id, country, city, channel, category, subcategory, brand,
+store_sku_id.
+
+**Deliberately excluded:** `gross_sales` and `net_sales` (both are units × price, so they hand the
+model its own target); same-day `stock_out_flag` and `stock_on_hand` (outcomes, not inputs);
+`purchase_cost` and `margin_pct` (kept for the business-cost proxy only); `sku_name`, `supplier_id`,
+`latitude`, `longitude`; and — under the current contract — same-day `list_price`, `discount_pct`,
+`temperature`, `rain_mm`.
+
+---
+
+## 13. Stockouts and sample weighting — what actually ran
+
+### 13.1 The problem
+
+On a stockout day, `units_sold` records what was *available to sell*, not what customers wanted.
+Training on it directly teaches the model demand collapsed on exactly the days it may have spiked.
+
+### 13.2 The three strategies
+
+`add_stockout_target()` always emits the same three columns, so nothing downstream branches:
+
+| Mode | demand_target on a stockout day | sample_weight |
+|---|---|---|
+| `none` | observed units_sold, unchanged | 1.0 |
+| `rolling_median` | max(observed, prior 56-day non-stockout rolling median) | 0.5 |
+| `percentage` | observed × 1.50 | 0.5 |
+
+Every baseline used for imputation is `shift(1)`-ed before rolling, so a row's target can never
+estimate itself.
+
+### 13.3 What was actually configured — stated plainly
+
+**Both production runs used `none`.** Measured on the real data:
+
+```text
+stockout_target_mode = none
+sample_weight value counts : {1.0: 1,100,000}
+demand_target == units_sold : True for every row
+stockout_imputed_amount ≠ 0 : 0 rows
+```
+
+So **the down-weighting never activated**. Every row trained at weight 1.0, including the 33,114
+censored ones. The machinery is built, wired through all three model families and leakage-tested —
+it simply was not switched on.
+
+Had `rolling_median` been enabled, the effect would have been:
+
+```text
+sample_weight counts      : {1.0: 1,066,886, 0.5: 33,114}
+rows whose target changed : 33,084
+mean uplift on those rows : +46.38 units
+```
+
+That is a substantial intervention — a mean uplift of 46 units on 3% of rows — which is precisely
+why it should be measured as an experiment rather than assumed. It remains the cheapest open item.
+
+### 13.4 How the weight reaches each model family
+
+| Family | Mechanism |
+|---|---|
+| Tree models | `pipeline.fit(..., model__sample_weight=train["sample_weight"])` — passed straight to LightGBM/XGBoost/CatBoost |
+| Torch models | Weighted L1: `(abs(pred − y) * weight).sum() / weight.sum()` — per-timestep weights inside the loss |
+| Darts | `model.fit(..., sample_weight=weight_series)` — one weight TimeSeries per target series |
+
+---
+
+## 14. Hyperparameter search spaces
+
+Optuna TPE (`multivariate=True`), seeded from `project.random_seed = 42`. Every trial is scored on a
+**genuine recursive 14-day validation forecast**, not a row-wise score over pre-computed lags — so a
+trial is evaluated exactly the way the model will be deployed.
+
+### 14.1 Tree models — 25 trials each in run 2
+
+| Model | Parameter | Range | Scale | Chosen |
+|---|---|---|---|---|
+| **LightGBM** | n_estimators | 300 – 1,200 | int | 834 |
+| | learning_rate | 0.01 – 0.15 | log | 0.0120 |
+| | num_leaves | 31 – 255 | int | 158 |
+| | max_depth | 5 – 14 | int | 9 |
+| | min_child_samples | 10 – 100 | int | 56 |
+| | subsample | 0.7 – 1.0 | float | 0.723 |
+| | colsample_bytree | 0.7 – 1.0 | float | 0.737 |
+| | reg_lambda | 1e-3 – 10 | log | 1.264 |
+| **XGBoost** | n_estimators | 300 – 1,200 | int | 1,094 |
+| | learning_rate | 0.01 – 0.15 | log | 0.0140 |
+| | max_depth | 4 – 12 | int | 8 |
+| | min_child_weight | 1 – 20 | log | 5.92 |
+| | subsample | 0.7 – 1.0 | float | 0.990 |
+| | colsample_bytree | 0.7 – 1.0 | float | 0.707 |
+| | reg_lambda | 1e-3 – 20 | log | 1.756 |
+| **CatBoost** | iterations | 300 – 1,200 | int | 1,007 |
+| | learning_rate | 0.01 – 0.15 | log | 0.0172 |
+| | depth | 5 – 10 | int | 8 |
+| | l2_leaf_reg | 1 – 20 | log | 5.90 |
+| | random_strength | 0 – 2 | float | 0.093 |
+
+All three converged on **low learning rates with many trees** — the signature of a noisy target with
+modest signal, where the optimiser buys variance reduction rather than fitting sharp structure.
+
+### 14.2 Sequence models
+
+Shared across all four: **lookback 14 – 112 in steps of 14** (whole weeks, at least one horizon),
+learning rate 1e-4 – 5e-3 (log), dropout 0 – 0.3, batch size {128, 256, 512}.
+
+| Model | Additional parameters | Chosen |
+|---|---|---|
+| **LSTM** | hidden_size {64,128,256}; num_layers 1–3; embedding_dim {8,16,32}; weight_decay 1e-6 – 1e-3 log | lookback **42**, hidden 128, layers 3, emb 16, lr 0.00412, dropout 0.220 |
+| **Transformer** | d_model {64,128,256}; heads {2,4,8}; layers 2–4; embedding_dim {8,16,32}; weight_decay 1e-6 – 1e-3 log | lookback **70**, d_model 256, heads 8, layers 2, emb 8, lr 0.00054, dropout 0.087 |
+| **TiDE** | hidden_size {64,128,256} | lookback 56, hidden 128 (defaults; its tuning study failed on the Darts bug and it was trained with sensible values at a capped 12 epochs) |
+
+**Every winning lookback is a multiple of seven** — 42, 70, 56 — which was not forced beyond the
+step size and is independent confirmation that the weekly structure the EDA found is real.
+
+---
+
+## 15. Model architectures
+
+### 15.1 Global LSTM encoder-decoder (written from scratch)
+
+```text
+past_x  [B, 42, 14]  ─► encoder LSTM (3 layers, hidden 128) ─► (h, c)
+static  [B, 6]       ─► 6 embedding tables            ─► static_vec [B, 6×16 = 96]
+
+for each horizon step h in 0..13:
+    decoder input = concat( future_x[:, h, :]  (7) ,  static_vec  (96) ,  prev_y  (1) )  = 104
+    (h, c), out   = decoder LSTM(decoder input, (h, c))
+    ŷ_h           = head(out)          # Linear(128→64) → ReLU → Linear(64→1)
+outputs [B, 14]
+```
+
+The first autoregressive token is the last normalised demand value, `past_x[:, -1, 0:1]`. During
+training, scheduled **teacher forcing at probability 0.2** replaces the previous prediction with the
+true value; at inference it is **always 0.0**, so the decoder never sees a label it would not have.
+
+The same weights serve all 1,004 series — identity enters only through the embeddings.
+
+### 15.2 Global temporal Transformer (written from scratch)
+
+```text
+past_x   [B, 70, 14] ─► Linear(14→256) ─► +positional ─► TransformerEncoder(2 layers, 8 heads) ─► memory [B, 70, 256]
+future_x [B, 14, 7]  ─► Linear(7→256)  ─┐
+static   [B, 6] ─► emb ─► Linear(48→256)─┴─► queries [B, 14, 256]
+                     ─► TransformerDecoder(1 layer, cross-attends memory) ─► [B, 14, 256]
+                     ─► Linear(256→1) ─► [B, 14]
+```
+
+Feed-forward width is 4 × d_model, `norm_first=True` (pre-norm, more stable), and the decoder uses
+`max(1, num_layers − 1)` layers.
+
+The key difference from the LSTM: **all 14 days are emitted at once**. Each horizon day forms its own
+query from that day's known-future covariates plus static context, so day 14 is conditioned on day
+14's promotion rather than on a chain of 13 previous predictions. No recursive error accumulation.
+
+### 15.3 Tree models
+
+Global models over the long panel. One sklearn `Pipeline`:
+
+```text
+ColumnTransformer
+├── numeric      SimpleImputer(median)                          → 43 columns
+└── categorical  SimpleImputer(most_frequent) → OrdinalEncoder  →  9 columns
+                 (handle_unknown="use_encoded_value", unknown_value=-1)
+└── estimator    LightGBM (regression_l1) | XGBoost (reg:squarederror) | CatBoost (MAE)
+```
+
+### 15.4 TiDE (Darts)
+
+Encoder-decoder MLP with static covariates enabled, `input_chunk_length=56`,
+`output_chunk_length=14`, hidden 128, decoder output dim 32, 2 encoder and 2 decoder layers.
+
+---
+
+## 16. How future covariates reach each model
+
+This is where the leakage contract is enforced, and each family does it differently.
+
+| Family | Mechanism |
+|---|---|
+| **Trees** | The future row is appended to history and `build_causal_features` runs over the combined frame. Known-future columns keep their supplied values; everything unknown is set to NaN and then blocked from the feature list entirely |
+| **Torch** | A separate `future_x [B, 14, F]` tensor, distinct from `past_x`. The decoder receives it per step (LSTM) or turns it into per-day queries (Transformer). Future targets are never in this tensor |
+| **Darts** | `future_covariates` TimeSeries extend past the training range; `past_covariates` stop at the origin. Darts enforces the distinction internally |
+
+Under the current contract the future channels are:
+
+```text
+is_holiday, is_weekend, dow_sin, dow_cos, month_sin, month_cos, promo_flag     (7 channels)
+```
+
+Past channels carry everything observed, including the target itself:
+
+```text
+demand_target, promo_flag, list_price, discount_pct, temperature, rain_mm,
+stock_out_flag, stock_on_hand, is_holiday, is_weekend, dow_sin, dow_cos,
+month_sin, month_cos                                                          (14 channels)
+```
+
+Flipping `price_known_future` to `true` would move `list_price` and `discount_pct` into the future
+set for all three families *and* into the API's required request fields, from one config line.
+
+---
+
+## 17. Categorical encoding by family
+
+| Family | Method | Unseen values | Why |
+|---|---|---|---|
+| **Trees** | Ordinal encoding inside the pipeline | Mapped to **−1** | Trees split on thresholds; one-hot on 1,005 store-SKU keys would explode the width for no gain. Ordinal also keeps one identical inference contract across all three libraries |
+| **Torch** | Learned embeddings, one table per field | Index **0** reserved for unknown | Lets the model learn similarity between SKUs rather than treating them as arbitrary integers |
+| **Darts** | Integer static covariates via `make_static_maps()` | Mapped to **−1** | Consumed because both models are built with `use_static_covariates=True` |
+
+Embedding tables actually built (cardinality = distinct values + 1 for unknown):
+
+```text
+store_id 14 · sku_id 103 · channel 5 · category 6 · subcategory 18 · brand 7
+```
+
+Each is `embedding_dim` wide (16 for the LSTM, 8 for the Transformer), concatenated into a static
+vector of 96 and 48 respectively.
+
+Maps are fitted on **training rows only** and frozen into the checkpoint, so inference reproduces the
+exact encoding. A genuinely new SKU therefore degrades to a learned "unknown" vector rather than
+crashing — the cold-start path.
+
+Note the deliberate trade-off: CatBoost's native ordered target statistics are *not* used. That
+probably costs some CatBoost accuracy, but it buys one identical inference contract across the three
+tree libraries. Testing native handling is on the future-work list.
+
+---
+
+## 18. Metrics — computed on a real example
+
+All metrics are pooled over every row in the window: 1,004 series × 14 days = **14,056 rows**. Not
+computed per series and averaged.
+
+### 18.1 A worked example
+
+Take three rows from the test window:
+
+| Row | Actual | Predicted | Error | Abs error |
+|---|---|---|---|---|
+| A | 100 | 90 | −10 | 10 |
+| B | 50 | 60 | +10 | 10 |
+| C | 10 | 5 | −5 | 5 |
+| **Sum** | **160** | **155** | **−5** | **25** |
+
+| Metric | Formula | This example | Meaning |
+|---|---|---|---|
+| **WAPE** | Σ\|error\| / Σ actual | 25 / 160 = **15.6%** | "Off by 15.6% of the units actually sold." Volume-weighted: row A's miss counts as much as row C's despite being 10× the demand |
+| **MAPE** | mean(\|error\| / actual) | (0.10 + 0.20 + 0.50)/3 = **26.7%** | Row C — 5 units on a base of 10 — contributes 50% and drags the average up. This is why MAPE is unstable here |
+| **MAE** | mean(\|error\|) | 25 / 3 = **8.33 units** | "We miss by 8.3 units per store-SKU-day." Translates directly into cases |
+| **RMSE** | √mean(error²) | √(225/3) = **8.66** | Penalises large misses; the promo-spike detector |
+| **Bias** | Σ error / Σ actual | −5 / 160 = **−3.1%** | Negative means systematic under-forecast → understock and lost sales. Positive → overstock and markdown |
+
+Note WAPE (15.6%) and MAPE (26.7%) differ by 11 points on the same three rows, entirely because of
+row C's small denominator. On the real data the gap is similar: WAPE ~0.27 against MAPE ~0.53.
+
+### 18.2 Why these, commercially
+
+- **WAPE** drives selection. A unit of error on a 500/day SKU genuinely costs more than one on a
+  10/day SKU, and WAPE weights it that way. It is also always defined.
+- **MAPE** is reported because stakeholders ask for it, never used to select. 0.28% of rows are zero
+  (excluded, with coverage reported) and 1.46% are under five units.
+- **MAE** is the units-per-day figure a planner can act on.
+- **RMSE** surfaces promo-spike failures that WAPE smooths over.
+- **Bias** is the inventory-critical one, and the metric that changed the production recommendation.
+
+### 18.3 Business-cost proxy
+
+`business_proxy()` computes under-forecast units × unit margin against over-forecast units ×
+purchase cost. It is a directional comparison of the asymmetry, **not** an inventory simulation —
+lead time, safety stock and replenishment policy are not modelled.
+
+---
+
+## 19. Results and the model chosen
+
+### 19.1 Every model, plus the baselines
+
+| Rank | Model | Train WAPE | Val WAPE | Test WAPE | Test MAPE | Test MAE | Test bias |
+|---|---|---|---|---|---|---|---|
+| 1 | Transformer | — | **0.2654** | 0.2747 | 0.5728 | 17.14 | **+7.32%** |
+| 2 | LSTM | — | 0.2662 | **0.2673** | **0.5134** | **16.68** | −1.10% |
+| 3 | CatBoost | 0.2664 | 0.2719 | 0.2683 | 0.5283 | 16.75 | +0.99% |
+| 4 | XGBoost | 0.2584 | 0.2721 | 0.2714 | 0.5199 | 16.94 | −1.27% |
+| 5 | LightGBM | 0.2637 | 0.2722 | 0.2704 | 0.5304 | 16.88 | **+0.86%** |
+| 6 | TiDE | — | 0.2762 | 0.2694 | 0.5263 | 16.81 | −0.00% |
+| — | *SARIMA baseline* | — | *0.3051* | *0.3029* | *0.5530* | *18.91* | *−1.70%* |
+| — | *28-day moving average* | — | *0.3172* | *0.3118* | *0.5639* | *19.46* | *−1.55%* |
+| — | *Seasonal naive* | — | *0.4307* | *0.4240* | *0.6911* | *26.46* | *−0.25%* |
+| — | *Last value flat* | — | *0.4817* | *0.4938* | *0.8436* | *30.82* | *+16.89%* |
+
+Train WAPE is blank for the sequence models: they early-stop on validation and never score the
+training set.
+
+### 19.2 The comparison, and the decision
+
+**Promoted by the pipeline: Transformer** (lowest validation WAPE). **The model I would deploy:
+CatBoost.** Four reasons:
+
+1. **The accuracy gap is inside the noise.** All six span 0.2654–0.2762 on validation, ~4% relative.
+   Transformer to CatBoost is 0.0065 WAPE.
+2. **Validation has mispredicted test three times.** Run 1: Transformer won validation, CatBoost best
+   on test. Run 2: Transformer won validation, LSTM best on test — with the Transformer *worst* of
+   the five non-Darts models. One 14-day December origin cannot separate models this close.
+3. **Bias settles it.** The Transformer over-forecasts test by **+7.32%** — roughly 64,000 phantom
+   units. CatBoost is +0.99%, LightGBM +0.86%. For an order decision that dwarfs 0.006 of WAPE.
+4. **Operational cost.** CatBoost trains in ~25 s against 10–30 min, tunes at ~40 s/trial against
+   7–30 min, scores all 1,004 series on CPU in ~22 s, and gives SHAP explanations free.
+
+CatBoost is also the only model top-three on **both** validation and test *and* byte-identical
+between the two runs. LightGBM is the runner-up and the least biased model in the study.
+
+Against SARIMA the models improve by **9.3% (Transformer) to 11.8% (LSTM)**. Real, but a global model
+beating a per-series statistical model by about a tenth — not by half.
+
+### 19.3 Feature importance, and what it confirms
+
+| Model | Method | Top feature | Share | Promotion flag |
+|---|---|---|---|---|
+| LightGBM | native gain | demand_roll_mean_28 | 70.3% | 3.1% |
+| XGBoost | native gain | demand_roll_mean_28 | 29.7% | **25.0%** |
+| CatBoost | native gain | demand_roll_mean_28 | 35.0% | **34.2%** |
+| LSTM | permutation on val WAPE | sku_id (static) | 46.1% | **17.2%** |
+| Transformer | permutation on val WAPE | demand_target (past window) | 64.6% | **13.9%** |
+
+Recent demand level dominates everywhere; the promotion flag is second almost universally, which
+vindicates treating the promo calendar as known-future. Weekday, weekend and the cyclical
+day-of-week term all appear in the tree top-tens — the weekly seasonality from the EDA reappearing
+after training. Individual demand lags appear in **no** top-ten: the rolling means absorb them.
+
+---
+
+## 20. Inference: how a forecast is actually produced
+
+### 20.1 Where models are loaded from — stated precisely
+
+**Models are loaded from the local filesystem, not downloaded from the MLflow registry.**
+
+```text
+configs/model_registry_v2.yaml  →  artifact_path: artifacts_v2/transformer/model.pt
+                                        ↓
+                          inference_router.run_selected()
+                                        ↓
+                   dispatch on family → ml | dl | darts adapter
+```
+
+MLflow is the **experiment record**; the YAML registry is the **serving contract**. Every model is
+also logged to MLflow as a run artifact, so a run could be pulled down, but the serving path does not
+do that today. That is a deliberate simplification for a local/Docker deployment and a genuine gap
+for a real one — MLflow Model Registry aliases (`champion`, `candidate`) with approval gates would be
+the production answer.
+
+### 20.2 How promotion is tracked
+
+Two registries, deliberately separate:
+
+| File | Role |
+|---|---|
+| `model_registry_v2.yaml` | **Serving contract** — one model, what the API loads |
+| `model_registry_all_v2.yaml` | **Audit record** — all six, ranked, with metrics, tuned params, artifact paths and predicted-vs-actual totals |
+
+`select_model.py` re-reads the comparison table and **refuses to promote anything that is not the
+current validation champion**, which prevents promoting a model because its *test* number looked
+good. The registry records the metric that won and its value:
+
+```yaml
+selected_model:
+  name: transformer
+  family: dl
+  artifact_path: artifacts_v2/transformer/model.pt
+  selection_metric: validation_wape
+  selection_value: 0.2654202684461504
+  validation_metrics: {wape: 0.2654, mape: 0.5336, mae: 16.48, ...}
+  test_metrics:       {wape: 0.2747, mape: 0.5728, mae: 17.14, ...}
+```
+
+In MLflow, runs are tagged `stage` = `tuning_parent` | `tuning` | `final` | `baseline`, so
+`tags.stage = 'final'` isolates the comparable models and `tags.stage = 'baseline'` the references.
+
+### 20.3 What we feed the model for genuinely future dates
+
+This is the question that matters most, because for 2024-01-01 onwards **we have no historical
+feature values at all** — no lags, no rolling means, nothing. Here is exactly how it works.
+
+**Step 1 — the caller supplies only what is genuinely known.** `make_future_template.py` generates
+it. For one series, the first three rows look like this:
+
+```text
+ store_id  sku_id       date  is_holiday  is_weekend  promo_flag
+STORE0001 SKU0001 2024-01-01           0           0           0
+STORE0001 SKU0001 2024-01-02           0           0           0
+STORE0001 SKU0001 2024-01-03           0           0           0
+```
+
+**Six columns.** No demand, no lags, no rolling means, no price, no inventory. That is the entire
+input for the future. 14,056 such rows cover every active series for 14 days.
+
+**Step 2 — the history is what supplies the lags.** The last observed days for this series:
+
+```text
+      date  units_sold  promo_flag  list_price  stock_out_flag
+2023-12-24         107           0        6.24               0
+2023-12-25         110           0        6.24               0
+2023-12-26          38           0        6.24               1   <- stockout day
+2023-12-27          88           0        6.24               0
+2023-12-28         162           1        6.24               0   <- promotion day
+2023-12-29         126           0        6.24               0
+2023-12-30         120           0        6.24               0
+2023-12-31         106           0        6.24               0
+```
+
+**Step 3 — day 1 features are computed by appending the future row to history and rebuilding.** The
+future row arrives with its target blanked; the feature builder then derives every historical
+feature from the real history behind it:
+
+```text
+forecast date 2024-01-01
+   demand_lag_1        = 106.0000   ← actual demand on 2023-12-31
+   demand_lag_7        = 110.0000   ← actual demand on 2023-12-25
+   demand_lag_14       = 147.0000
+   demand_lag_28       = 124.0000
+   demand_roll_mean_7  = 107.1429
+   demand_roll_mean_28 = 111.3571
+   promo_prev_1        = 0.0000
+   promo_rate_28       = 0.0357
+   stockout_lag_1      = 0.0000
+   series_age_days     = 1095.0000
+```
+
+So the caller never supplies lags — **they are derived**, which is exactly why the same feature code
+must run in training and inference.
+
+**Step 4 — predict day 1, then feed the prediction back as history.**
+
+```text
+   day 1 prediction = 101.0195
+```
+
+**Step 5 — day 2's lag comes from the prediction, not the actual.**
+
+```text
+   day 2 (2024-01-02) demand_lag_1 = 101.0195
+   day 1 prediction was            101.0195   ← identical, so the chain is genuine
+   day 2 demand_lag_7             = 38.0000   ← still a real observation (2023-12-26, the stockout day)
+```
+
+This is the whole recursion in one trace. Day 2's one-day lag is day 1's **prediction**; its
+seven-day lag is still a real observation because that date is inside history. As the horizon
+advances, progressively more of the lag window is model output rather than data — by day 14, the
+one-day lag is thirteen predictions deep.
+
+Rows are processed **one forecast date at a time**, in order, with history growing by one synthetic
+row per series per step. They are not passed as a single batch, because day 2 cannot be built until
+day 1 exists.
+
+### 20.4 How leakage is prevented in this loop
+
+Three mechanisms, and the trace above demonstrates all three:
+
+1. **The target is blanked on arrival.** Any of `units_sold`, `demand_target`, `gross_sales`,
+   `net_sales`, `stock_out_flag`, `stock_on_hand` present on a future row is overwritten with NaN
+   before feature building.
+2. **Unknown covariates are blanked by contract.** With price and weather set to unknown, those
+   columns are nulled and excluded from the feature list, so a caller cannot smuggle them in.
+3. **Only the prediction is appended.** The synthetic history row carries the *predicted* value as
+   both `units_sold` and `demand_target`. The actual is never consulted — it does not exist yet for a
+   real future forecast, and for validation and test it is deliberately withheld.
+
+Verified empirically rather than asserted: corrupting future actuals by ×1000 leaves every forecast
+**bit-identical**, while flipping the promotion flag (declared known) moves predictions by 151 units.
+See §6.
+
+### 20.5 Sequence models: same contract, different mechanics
+
+No recursion at all. One window per series is assembled and all 14 days emitted at once:
+
+```text
+lookback from checkpoint = 42, horizon = 14
+past_x   [B, 42, 14]  ← 42 days of real history, 14 channels
+future_x [B, 14,  7]  ← 14 days of known-future covariates, 7 channels
+static   [B, 6]       ← store, SKU, channel, category, subcategory, brand
+target scaling: mean = 59.1547, std = 44.9522   (fitted on TRAINING rows only)
+```
+
+The lookback comes from the **checkpoint**, not global config — it is tuned per model, so the artifact
+is authoritative. Predictions are de-scaled with the stored mean and std and clipped at zero.
+
+### 20.6 The output
+
+```text
+date,store_id,sku_id,prediction,model,family
+2024-01-01,STORE0001,SKU0001,100.10,catboost,ml
+```
+
+14,056 rows per model (1,004 series × 14 days); 84,336 rows across all six.
+`store_sku_forecast_and_metrics.csv` joins each series' forecast to how accurately that same series
+was predicted on the held-out window, sorted worst-first — the file to hand a planner.
+
+---
+
+## 21. File flow — what runs when, and what it holds
+
+Cross-reference to §4, which describes each module in detail. This is the execution order with
+inputs and outputs.
+
+| # | Stage | File | Reads | Writes |
+|---|---|---|---|---|
+| 1 | Features | `prepare_dataset.py` | raw CSV, config | `data/processed/features.parquet` |
+| 2 | Tune trees | `tune_bayesian.py` | raw, config | `tuning/<m>_best_params.json`, `_trials.csv`, `_study.db`, per-trial models; MLflow nested runs |
+| 3 | Tune sequences | `tune_dl.py` | raw, config | same, plus tuned **lookback** |
+| 4 | Train trees | `train_ml.py` | raw, best params | `<m>/model.joblib`, `metrics.json`, prediction CSVs; MLflow run |
+| 5 | Train torch | `train_dl.py` | raw, best params | `<m>/model.pt` (state dict + metadata + config), metrics, predictions |
+| 6 | Train Darts | `train_darts.py` | raw, best params | `<m>/model.pt` + `.ckpt` + `metadata.joblib`, metrics, predictions |
+| 7 | Baselines | `baseline.py` | raw, config | `baseline_metrics.csv`, predictions; 4 MLflow runs |
+| 8 | Compare | `evaluate_compare.py` | all `metrics.json` | `model_comparison.csv` |
+| 9 | Report | `report_best_models.py` | metrics + test predictions | best-per-family, per-series and per-horizon breakdowns |
+| 10 | Importance | `feature_importance.py` | fitted models | `feature_importance.csv` |
+| 11 | Promote | `select_model.py` | comparison, metrics | `model_registry.yaml` |
+| 12 | Register all | `register_all_models.py` | all metrics + artifacts | `model_registry_all.yaml` |
+| 13 | Future inputs | `make_future_template.py` | raw history, config | `future_covariates.csv`, `forecast_request.json` |
+| 14 | Forecast | `run_final_inference.py` | registry/best models, raw | `forecast_store_sku.csv`, `store_sku_forecast_and_metrics.csv` |
+| 15 | Serve | `api.py` → `inference_router.py` | registry, history, request | JSON forecast response |
+
+**Supporting modules** (not pipeline stages): `config.py` loads YAML and applies tuned overrides;
+`data.py` is the canonical load path; `features.py` owns every feature definition and the blocked-column
+policy; `stockout.py` builds the target and weights; `splits.py` computes boundaries; `metrics.py`
+holds the metric maths; `tracking.py` wires MLflow and loads `.env`; `logging_utils.py` gives each
+step its own rotating log; `hierarchy.py` does bottom-up and middle-out; `drift.py` monitors PSI/KS.
+
+**Report writing:** `scripts/md_to_docx.py` renders the Markdown report to Word;
+`scripts/append_docx_section.py` and `scripts/replace_docx_section.py` add or swap a section in an
+existing document so manual Word edits survive.
+
+**Orchestration:** `scripts/run_v1.sh` runs the whole chain with per-family trial counts, a
+pass/fail trail, and skip-if-exists resume. `scripts/run_all.sh` is the generic equivalent.
