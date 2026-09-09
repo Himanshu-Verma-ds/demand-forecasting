@@ -137,3 +137,186 @@ moving_average_28       test 0.3118 0.5639 19.4617   -1.5542
   "csv": "reports/v2/baseline_metrics.csv",
   "json": "reports/v2/baseline_evaluation.json"
 }
+2026-09-09 09:25:21 | INFO     | demand_forecasting.baseline | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "outdir": "reports/v2",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "sarima_order": "(1, 1, 1)",
+  "sarima_seasonal_order": "(1, 1, 1, 7)",
+  "started_at_utc": "2026-09-09T09:25:21.970646+00:00",
+  "step": "baseline",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 09:25:21 | INFO     | demand_forecasting.baseline | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 09:25:25 | INFO     | demand_forecasting.baseline | Running seasonal_naive on validation (origin 2023-12-03)
+2026-09-09 09:25:25 | INFO     | demand_forecasting.baseline | seasonal_naive / validation: WAPE 0.4307  MAE 26.75
+2026-09-09 09:25:25 | INFO     | demand_forecasting.baseline | Running naive_last_value on validation (origin 2023-12-03)
+2026-09-09 09:25:25 | INFO     | demand_forecasting.baseline | naive_last_value / validation: WAPE 0.4817  MAE 29.91
+2026-09-09 09:25:25 | INFO     | demand_forecasting.baseline | Running moving_average_28 on validation (origin 2023-12-03)
+2026-09-09 09:25:26 | INFO     | demand_forecasting.baseline | moving_average_28 / validation: WAPE 0.3172  MAE 19.70
+2026-09-09 09:25:26 | INFO     | demand_forecasting.baseline | Running sarima on validation (origin 2023-12-03)
+2026-09-09 09:28:04 | INFO     | demand_forecasting.baseline |   SARIMA 200/1005 series fitted
+2026-09-09 09:30:51 | INFO     | demand_forecasting.baseline |   SARIMA 400/1005 series fitted
+2026-09-09 09:33:36 | INFO     | demand_forecasting.baseline |   SARIMA 600/1005 series fitted
+2026-09-09 09:36:25 | INFO     | demand_forecasting.baseline |   SARIMA 800/1005 series fitted
+2026-09-09 09:39:11 | INFO     | demand_forecasting.baseline |   SARIMA 1000/1005 series fitted
+2026-09-09 09:39:16 | INFO     | demand_forecasting.baseline |   sarima fit stats: {'fitted': 1004, 'failed': 0, 'too_short': 0, 'fallback_rows': 0}
+2026-09-09 09:39:16 | INFO     | demand_forecasting.baseline | sarima / validation: WAPE 0.3051  MAE 18.95
+2026-09-09 09:39:16 | INFO     | demand_forecasting.baseline | Running seasonal_naive on test (origin 2023-12-17)
+2026-09-09 09:39:17 | INFO     | demand_forecasting.baseline | seasonal_naive / test: WAPE 0.4240  MAE 26.46
+2026-09-09 09:39:17 | INFO     | demand_forecasting.baseline | Running naive_last_value on test (origin 2023-12-17)
+2026-09-09 09:39:17 | INFO     | demand_forecasting.baseline | naive_last_value / test: WAPE 0.4938  MAE 30.82
+2026-09-09 09:39:17 | INFO     | demand_forecasting.baseline | Running moving_average_28 on test (origin 2023-12-17)
+2026-09-09 09:39:17 | INFO     | demand_forecasting.baseline | moving_average_28 / test: WAPE 0.3118  MAE 19.46
+2026-09-09 09:39:17 | INFO     | demand_forecasting.baseline | Running sarima on test (origin 2023-12-17)
+2026-09-09 09:42:00 | INFO     | demand_forecasting.baseline |   SARIMA 200/1005 series fitted
+2026-09-09 09:44:54 | INFO     | demand_forecasting.baseline |   SARIMA 400/1005 series fitted
+2026-09-09 09:47:37 | INFO     | demand_forecasting.baseline |   SARIMA 600/1005 series fitted
+2026-09-09 09:50:30 | INFO     | demand_forecasting.baseline |   SARIMA 800/1005 series fitted
+2026-09-09 09:53:16 | INFO     | demand_forecasting.baseline |   SARIMA 1000/1005 series fitted
+2026-09-09 09:53:21 | INFO     | demand_forecasting.baseline |   sarima fit stats: {'fitted': 1004, 'failed': 0, 'too_short': 0, 'fallback_rows': 0}
+2026-09-09 09:53:21 | INFO     | demand_forecasting.baseline | sarima / test: WAPE 0.3029  MAE 18.91
+2026-09-09 09:55:16 | INFO     | demand_forecasting.baseline | Logged 4 baseline runs to MLflow experiment fmcg-demand-forecasting-v2
+2026-09-09 09:55:16 | INFO     | demand_forecasting.baseline | Baselines:
+         baseline      split   wape   mape     mae  bias_pct
+   seasonal_naive validation 0.4307 0.6912 26.7451   -1.2766
+ naive_last_value validation 0.4817 0.8341 29.9141   12.9777
+moving_average_28 validation 0.3172 0.5741 19.6995   -1.8678
+           sarima validation 0.3051 0.5558 18.9492   -3.2493
+   seasonal_naive       test 0.4240 0.6911 26.4626   -0.2499
+ naive_last_value       test 0.4938 0.8436 30.8176   16.8858
+moving_average_28       test 0.3118 0.5639 19.4617   -1.5542
+           sarima       test 0.3029 0.5530 18.9069   -1.6991
+2026-09-09 09:55:16 | INFO     | demand_forecasting.baseline | Baseline output:
+{
+  "csv": "reports/v2/baseline_metrics.csv",
+  "fit_stats": {
+    "sarima": {
+      "test": {
+        "failed": 0,
+        "fallback_rows": 0,
+        "fitted": 1004,
+        "too_short": 0
+      },
+      "validation": {
+        "failed": 0,
+        "fallback_rows": 0,
+        "fitted": 1004,
+        "too_short": 0
+      }
+    }
+  },
+  "json": "reports/v2/baseline_evaluation.json",
+  "predictions": "reports/v2/baseline_predictions.csv"
+}
