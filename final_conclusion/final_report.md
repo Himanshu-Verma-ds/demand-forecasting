@@ -348,3 +348,164 @@ probabilistic output.
 
 **What is not worth doing:** a larger Transformer, or a wider hyperparameter sweep. The second run
 already showed neither moves the number.
+## 11. Feature importance and explainability
+
+Explaining a forecast matters as much as producing it, because a planner who cannot see why a number moved will not act on it. The model families do not admit the same method, so I used two.
+
+| Model family | Method | What it measures |
+|---|---|---|
+| LightGBM, XGBoost, CatBoost | Native gain importance | Total reduction in training loss contributed by every split on that feature, summed across all trees. Exact and free, but it describes how the model was *built* |
+| LSTM, Transformer | Permutation importance on the validation window | Each input channel is shuffled across series, the 14-day forecast is regenerated, and the rise in validation WAPE is recorded. Slower, but it measures what the model actually *relies on* when predicting |
+
+Scores are normalised to percentages so they can be read within a model. They are not directly comparable across the two methods.
+
+### LightGBM — top 10 (native gain)
+
+| Rank | Feature | Share of importance |
+|---|---|---|
+| 1 | demand_roll_mean_28 | 70.3% |
+| 2 | demand_roll_mean_14 | 13.2% |
+| 3 | demand_roll_mean_7 | 4.2% |
+| 4 | promo_flag | 3.1% |
+| 5 | sku_demand_mean_lag_1 | 1.4% |
+| 6 | weekday | 1.1% |
+| 7 | demand_roll_max_28 | 1.1% |
+| 8 | discount_pct_mean_28 | 0.8% |
+| 9 | demand_roll_max_14 | 0.8% |
+| 10 | promo_rate_28 | 0.6% |
+
+### XGBoost — top 10 (native gain)
+
+| Rank | Feature | Share of importance |
+|---|---|---|
+| 1 | demand_roll_mean_28 | 29.7% |
+| 2 | promo_flag | 25.0% |
+| 3 | demand_roll_mean_14 | 17.4% |
+| 4 | is_weekend | 3.5% |
+| 5 | demand_roll_mean_7 | 3.4% |
+| 6 | demand_roll_max_14 | 3.0% |
+| 7 | weekday | 2.5% |
+| 8 | demand_roll_std_28 | 1.1% |
+| 9 | promo_rate_28 | 1.0% |
+| 10 | discount_pct_mean_28 | 0.9% |
+
+### CatBoost — top 10 (native gain)
+
+| Rank | Feature | Share of importance |
+|---|---|---|
+| 1 | demand_roll_mean_28 | 35.0% |
+| 2 | promo_flag | 34.2% |
+| 3 | demand_roll_mean_14 | 7.3% |
+| 4 | sku_demand_mean_lag_1 | 3.4% |
+| 5 | weekday | 2.4% |
+| 6 | dow_sin | 2.1% |
+| 7 | discount_pct_mean_28 | 1.9% |
+| 8 | promo_rate_28 | 1.9% |
+| 9 | is_weekend | 1.6% |
+| 10 | demand_roll_mean_7 | 1.1% |
+
+### LSTM — top 10 (permutation on validation WAPE)
+
+| Rank | Feature | Share of importance |
+|---|---|---|
+| 1 | sku_id (static) | 46.1% |
+| 2 | promo_flag (known future) | 17.2% |
+| 3 | demand_target (past window) | 13.1% |
+| 4 | subcategory (static) | 8.0% |
+| 5 | channel (static) | 7.8% |
+| 6 | category (static) | 3.8% |
+| 7 | brand (static) | 3.5% |
+| 8 | store_id (static) | 0.3% |
+| 9 | stock_out_flag (past window) | 0.1% |
+| 10 | list_price (past window) | 0.0% |
+
+### Transformer — top 10 (permutation on validation WAPE)
+
+| Rank | Feature | Share of importance |
+|---|---|---|
+| 1 | demand_target (past window) | 64.6% |
+| 2 | promo_flag (known future) | 13.9% |
+| 3 | category (static) | 9.0% |
+| 4 | subcategory (static) | 4.1% |
+| 5 | sku_id (static) | 3.6% |
+| 6 | channel (static) | 2.1% |
+| 7 | brand (static) | 2.1% |
+| 8 | discount_pct (past window) | 0.2% |
+| 9 | promo_flag (past window) | 0.2% |
+| 10 | store_id (static) | 0.1% |
+
+**What this tells me.** All five models agree on the same two things, which is reassuring given how differently they are built. Recent demand level dominates: the 28-day rolling mean alone carries 70% of LightGBM's gain, and the past demand window carries 65% of the Transformer's permutation importance. The promotion flag is second almost everywhere — 25% for XGBoost, 34% for CatBoost, 17% and 14% for the two neural models. That is a strong vindication of treating the promotion calendar as a known-future covariate, since it is the single most valuable thing the model knows about the future.
+
+Weekday, weekend and the cyclical day-of-week term all appear in the tree top-tens, which is the weekly seasonality from the EDA showing up again on the other side of training.
+
+Two things worth flagging honestly. First, the individual demand lags do not appear in any top-ten: the rolling means absorb them, so the lag set is doing its work through the smoothed features rather than as standalone signals. Second, the LSTM leans heavily on SKU identity (46%) while the Transformer leans on demand history (65%) — the same accuracy reached two different ways, which is a reminder that similar WAPE does not mean similar behaviour.
+
+---
+
+## 12. Sample 14-day forecasts, store by SKU
+
+The deliverable covers all 1,004 active series; the full file is `forecast_all_models_2024-01-01_to_2024-01-14.csv` in the inference bundle. Three series are shown here to make the output concrete — the highest-volume pair, a median one and the lowest — with every model's daily prediction side by side. These are genuine out-of-sample forecasts: the data ends 2023-12-31 and there is no actual to compare against yet.
+
+### STORE0001 / SKU0035 — highest-volume series
+
+| Date | LightGBM | XGBoost | CatBoost | LSTM | Transformer | TiDE |
+|---|---|---|---|---|---|---|
+| 2024-01-01 | 157.3 | 155.8 | 166.0 | 154.3 | 145.1 | 161.7 |
+| 2024-01-02 | 147.5 | 135.5 | 158.9 | 167.6 | 154.5 | 171.2 |
+| 2024-01-03 | 148.3 | 132.7 | 159.3 | 167.8 | 159.0 | 156.7 |
+| 2024-01-04 | 148.4 | 135.8 | 159.1 | 170.5 | 157.4 | 159.3 |
+| 2024-01-05 | 147.8 | 135.6 | 158.6 | 173.2 | 148.9 | 150.3 |
+| 2024-01-06 | 170.9 | 158.2 | 185.3 | 190.0 | 185.6 | 188.2 |
+| 2024-01-07 | 169.5 | 166.0 | 186.4 | 191.2 | 183.8 | 177.7 |
+| 2024-01-08 | 141.3 | 139.2 | 158.2 | 172.1 | 147.7 | 163.0 |
+| 2024-01-09 | 142.3 | 122.7 | 156.3 | 174.1 | 154.6 | 155.6 |
+| 2024-01-10 | 143.4 | 124.5 | 156.3 | 178.5 | 153.0 | 156.5 |
+| 2024-01-11 | 143.0 | 132.2 | 151.8 | 176.6 | 148.8 | 155.5 |
+| 2024-01-12 | 143.3 | 132.9 | 151.6 | 177.4 | 146.9 | 148.1 |
+| 2024-01-13 | 168.8 | 171.1 | 176.8 | 192.4 | 188.0 | 188.3 |
+| 2024-01-14 | 168.7 | 153.8 | 181.2 | 192.8 | 187.9 | 177.8 |
+| **14-day total** | **2140** | **1996** | **2306** | **2479** | **2261** | **2310** |
+
+### STORE0002 / SKU0023 — median-volume series
+
+| Date | LightGBM | XGBoost | CatBoost | LSTM | Transformer | TiDE |
+|---|---|---|---|---|---|---|
+| 2024-01-01 | 48.9 | 50.1 | 52.8 | 52.7 | 53.0 | 46.8 |
+| 2024-01-02 | 49.3 | 50.4 | 51.7 | 53.8 | 54.6 | 50.8 |
+| 2024-01-03 | 49.1 | 50.0 | 51.6 | 54.7 | 56.1 | 47.7 |
+| 2024-01-04 | 49.8 | 50.0 | 50.9 | 55.0 | 57.1 | 47.8 |
+| 2024-01-05 | 49.4 | 49.6 | 50.5 | 55.0 | 57.3 | 47.9 |
+| 2024-01-06 | 57.6 | 57.5 | 58.8 | 66.4 | 66.8 | 62.1 |
+| 2024-01-07 | 59.2 | 57.1 | 61.8 | 66.2 | 65.2 | 57.6 |
+| 2024-01-08 | 48.9 | 47.3 | 52.5 | 54.1 | 53.1 | 51.0 |
+| 2024-01-09 | 49.9 | 47.0 | 52.1 | 55.9 | 54.4 | 50.9 |
+| 2024-01-10 | 49.7 | 47.6 | 51.3 | 56.7 | 55.4 | 50.0 |
+| 2024-01-11 | 48.9 | 47.8 | 49.8 | 57.0 | 56.0 | 50.4 |
+| 2024-01-12 | 50.0 | 49.3 | 52.6 | 57.2 | 56.2 | 49.7 |
+| 2024-01-13 | 59.9 | 57.0 | 62.7 | 68.4 | 67.1 | 62.0 |
+| 2024-01-14 | 59.8 | 58.2 | 65.0 | 68.3 | 65.7 | 61.6 |
+| **14-day total** | **730** | **719** | **764** | **822** | **818** | **736** |
+
+### STORE0013 / SKU0086 — lowest-volume series
+
+| Date | LightGBM | XGBoost | CatBoost | LSTM | Transformer | TiDE |
+|---|---|---|---|---|---|---|
+| 2024-01-01 | 5.3 | 5.2 | 5.1 | 6.1 | 6.2 | 2.1 |
+| 2024-01-02 | 5.3 | 5.4 | 5.2 | 5.9 | 6.3 | 3.9 |
+| 2024-01-03 | 5.4 | 5.4 | 5.2 | 5.6 | 5.9 | 4.6 |
+| 2024-01-04 | 5.5 | 5.4 | 5.2 | 5.4 | 6.0 | 3.4 |
+| 2024-01-05 | 5.3 | 5.4 | 5.3 | 5.4 | 6.0 | 4.2 |
+| 2024-01-06 | 6.2 | 6.3 | 6.4 | 5.5 | 7.5 | 5.3 |
+| 2024-01-07 | 6.1 | 5.9 | 6.5 | 5.5 | 7.7 | 7.4 |
+| 2024-01-08 | 5.5 | 5.1 | 5.4 | 5.3 | 6.6 | 1.4 |
+| 2024-01-09 | 5.4 | 5.4 | 5.5 | 5.3 | 5.8 | 3.2 |
+| 2024-01-10 | 5.4 | 5.4 | 5.4 | 5.3 | 5.0 | 2.7 |
+| 2024-01-11 | 5.4 | 5.4 | 5.5 | 5.3 | 4.8 | 4.4 |
+| 2024-01-12 | 5.4 | 5.4 | 5.5 | 5.3 | 4.7 | 2.5 |
+| 2024-01-13 | 6.3 | 6.3 | 6.7 | 5.4 | 6.6 | 6.1 |
+| 2024-01-14 | 6.1 | 5.9 | 6.9 | 5.4 | 7.4 | 7.5 |
+| **14-day total** | **79** | **78** | **80** | **76** | **86** | **59** |
+
+Two things stand out in these tables. Every model lifts on 6, 7, 13 and 14 January, which are the two Saturdays and Sundays in the window — the weekend seasonality found in the EDA, reproduced independently by six models on data none of them has seen. I did not prompt that; it falls out of the lag and calendar features.
+
+The second is less comfortable. The spread between models on a single series is wider than the aggregate figures suggest, and on the highest-volume pair the daily gap between the lowest and highest model runs to roughly 30 units. That is the same 6% estate-level disagreement from section 7, but seen at the level a planner actually places an order, and it is the strongest practical argument for handing them a range rather than a single number.

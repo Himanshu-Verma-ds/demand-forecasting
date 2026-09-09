@@ -1,0 +1,358 @@
+2026-09-09 08:38:34 | INFO     | demand_forecasting.feature_importance | Run context:
+{
+  "artifacts_dir": "artifacts_v2",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T08:38:34.845971+00:00",
+  "step": "feature_importance",
+  "top_n": 10,
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 08:38:34 | INFO     | demand_forecasting.feature_importance | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 08:38:35 | INFO     | demand_forecasting.feature_importance | lightgbm top features:
+   model      method               feature   importance  importance_pct
+lightgbm native gain   demand_roll_mean_28 4.111633e+07       70.283956
+lightgbm native gain   demand_roll_mean_14 7.748835e+06       13.245804
+lightgbm native gain    demand_roll_mean_7 2.471824e+06        4.225318
+lightgbm native gain            promo_flag 1.840665e+06        3.146420
+lightgbm native gain sku_demand_mean_lag_1 7.926672e+05        1.354980
+lightgbm native gain               weekday 6.557214e+05        1.120886
+lightgbm native gain    demand_roll_max_28 6.147845e+05        1.050908
+lightgbm native gain  discount_pct_mean_28 4.971552e+05        0.849834
+lightgbm native gain    demand_roll_max_14 4.910637e+05        0.839421
+lightgbm native gain         promo_rate_28 3.560220e+05        0.608582
+2026-09-09 08:38:36 | INFO     | demand_forecasting.feature_importance | xgboost top features:
+  model      method              feature   importance  importance_pct
+xgboost native gain  demand_roll_mean_28 2.282065e+06       29.699559
+xgboost native gain           promo_flag 1.919428e+06       24.980075
+xgboost native gain  demand_roll_mean_14 1.339192e+06       17.428688
+xgboost native gain           is_weekend 2.714765e+05        3.533085
+xgboost native gain   demand_roll_mean_7 2.587768e+05        3.367808
+xgboost native gain   demand_roll_max_14 2.283995e+05        2.972468
+xgboost native gain              weekday 1.890033e+05        2.459752
+xgboost native gain   demand_roll_std_28 8.235234e+04        1.071761
+xgboost native gain        promo_rate_28 7.623369e+04        0.992131
+xgboost native gain discount_pct_mean_28 6.556045e+04        0.853226
+2026-09-09 08:38:37 | INFO     | demand_forecasting.feature_importance | catboost top features:
+   model      method               feature  importance  importance_pct
+catboost native gain   demand_roll_mean_28   35.012986       35.012986
+catboost native gain            promo_flag   34.186176       34.186176
+catboost native gain   demand_roll_mean_14    7.310921        7.310921
+catboost native gain sku_demand_mean_lag_1    3.381003        3.381003
+catboost native gain               weekday    2.432381        2.432381
+catboost native gain               dow_sin    2.108477        2.108477
+catboost native gain  discount_pct_mean_28    1.935837        1.935837
+catboost native gain         promo_rate_28    1.880885        1.880885
+catboost native gain            is_weekend    1.641183        1.641183
+catboost native gain    demand_roll_mean_7    1.083028        1.083028
+2026-09-09 08:38:37 | INFO     | demand_forecasting.feature_importance | Feature importance written:
+{
+  "models": [
+    "catboost",
+    "lightgbm",
+    "xgboost"
+  ],
+  "path": "reports/v2/feature_importance.csv",
+  "rows": 30
+}
+2026-09-09 08:39:24 | INFO     | demand_forecasting.feature_importance | Run context:
+{
+  "artifacts_dir": "artifacts_v2",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "started_at_utc": "2026-09-09T08:39:24.412956+00:00",
+  "step": "feature_importance",
+  "top_n": 10,
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-09 08:39:24 | INFO     | demand_forecasting.feature_importance | Effective configuration:
+{
+  "bayes": {
+    "log_trial_models": true,
+    "max_tune_rows": 200000,
+    "n_trials": 25,
+    "n_trials_dl": 4,
+    "objective_metric": "wape",
+    "timeout_seconds": null,
+    "tuning_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "data": {
+    "date_col": "date",
+    "horizon": 14,
+    "lookback": 56,
+    "raw_path": "data/raw/data.csv",
+    "series_cols": [
+      "store_id",
+      "sku_id"
+    ],
+    "target_col": "units_sold"
+  },
+  "dl": {
+    "batch_size": 256,
+    "dropout": 0.15,
+    "embedding_dim": 16,
+    "epochs": 50,
+    "hidden_size": 128,
+    "learning_rate": 0.001,
+    "max_train_windows": 150000,
+    "num_layers": 2,
+    "num_workers": 4,
+    "patience": 8,
+    "transformer_d_model": 128,
+    "transformer_heads": 4,
+    "transformer_layers": 3,
+    "weight_decay": 0.0001
+  },
+  "features": {
+    "demand_lags": [
+      1,
+      7,
+      14,
+      28
+    ],
+    "demand_roll_windows": [
+      7,
+      14,
+      28
+    ],
+    "price_known_future": false,
+    "promo_known_future": true,
+    "stock_roll_window": 28,
+    "stockout_imputation_min_periods": 7,
+    "stockout_imputation_window": 56,
+    "stockout_lags": [
+      1,
+      7,
+      14
+    ],
+    "stockout_percentage_uplift": 0.5,
+    "stockout_sample_weight": 0.5,
+    "stockout_target_mode": "none",
+    "weather_known_future": false
+  },
+  "hierarchy": {
+    "exclude_stockouts_for_shares": true,
+    "share_target_col": "units_sold",
+    "share_window_days": 56
+  },
+  "logging": {
+    "backup_count": 14,
+    "console": true,
+    "dir": "logs",
+    "level": "INFO",
+    "utc": false
+  },
+  "ml": {
+    "models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ]
+  },
+  "monitoring": {
+    "promo_rate_relative_change_alert": 0.3,
+    "psi_alert": 0.25,
+    "psi_warning": 0.1
+  },
+  "project": {
+    "name": "fmcg_demand_forecasting",
+    "random_seed": 42
+  },
+  "split": {
+    "test_days": 14,
+    "validation_days": 14
+  },
+  "training": {
+    "max_train_rows": null,
+    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "n_jobs": 4,
+    "save_dir": "artifacts_v2",
+    "selection_metric": "wape"
+  }
+}
+2026-09-09 08:39:25 | INFO     | demand_forecasting.feature_importance | lightgbm top features:
+   model      method               feature   importance  importance_pct
+lightgbm native gain   demand_roll_mean_28 4.111633e+07       70.283956
+lightgbm native gain   demand_roll_mean_14 7.748835e+06       13.245804
+lightgbm native gain    demand_roll_mean_7 2.471824e+06        4.225318
+lightgbm native gain            promo_flag 1.840665e+06        3.146420
+lightgbm native gain sku_demand_mean_lag_1 7.926672e+05        1.354980
+lightgbm native gain               weekday 6.557214e+05        1.120886
+lightgbm native gain    demand_roll_max_28 6.147845e+05        1.050908
+lightgbm native gain  discount_pct_mean_28 4.971552e+05        0.849834
+lightgbm native gain    demand_roll_max_14 4.910637e+05        0.839421
+lightgbm native gain         promo_rate_28 3.560220e+05        0.608582
+2026-09-09 08:39:25 | INFO     | demand_forecasting.feature_importance | xgboost top features:
+  model      method              feature   importance  importance_pct
+xgboost native gain  demand_roll_mean_28 2.282065e+06       29.699559
+xgboost native gain           promo_flag 1.919428e+06       24.980075
+xgboost native gain  demand_roll_mean_14 1.339192e+06       17.428688
+xgboost native gain           is_weekend 2.714765e+05        3.533085
+xgboost native gain   demand_roll_mean_7 2.587768e+05        3.367808
+xgboost native gain   demand_roll_max_14 2.283995e+05        2.972468
+xgboost native gain              weekday 1.890033e+05        2.459752
+xgboost native gain   demand_roll_std_28 8.235234e+04        1.071761
+xgboost native gain        promo_rate_28 7.623369e+04        0.992131
+xgboost native gain discount_pct_mean_28 6.556045e+04        0.853226
+2026-09-09 08:39:26 | INFO     | demand_forecasting.feature_importance | catboost top features:
+   model      method               feature  importance  importance_pct
+catboost native gain   demand_roll_mean_28   35.012986       35.012986
+catboost native gain            promo_flag   34.186176       34.186176
+catboost native gain   demand_roll_mean_14    7.310921        7.310921
+catboost native gain sku_demand_mean_lag_1    3.381003        3.381003
+catboost native gain               weekday    2.432381        2.432381
+catboost native gain               dow_sin    2.108477        2.108477
+catboost native gain  discount_pct_mean_28    1.935837        1.935837
+catboost native gain         promo_rate_28    1.880885        1.880885
+catboost native gain            is_weekend    1.641183        1.641183
+catboost native gain    demand_roll_mean_7    1.083028        1.083028
+2026-09-09 08:40:00 | INFO     | demand_forecasting.feature_importance | lstm top features:
+model                         method                      feature  wape_after  baseline_wape  wape_increase  importance_pct
+ lstm permutation on validation WAPE              sku_id (static)    0.449275       0.265996       0.183279       46.144153
+ lstm permutation on validation WAPE    promo_flag (known future)    0.334439       0.265996       0.068443       17.231817
+ lstm permutation on validation WAPE  demand_target (past window)    0.317963       0.265996       0.051966       13.083535
+ lstm permutation on validation WAPE         subcategory (static)    0.297737       0.265996       0.031741        7.991380
+ lstm permutation on validation WAPE             channel (static)    0.297022       0.265996       0.031026        7.811426
+ lstm permutation on validation WAPE            category (static)    0.281190       0.265996       0.015193        3.825247
+ lstm permutation on validation WAPE               brand (static)    0.279918       0.265996       0.013922        3.505031
+ lstm permutation on validation WAPE            store_id (static)    0.267232       0.265996       0.001235        0.310957
+ lstm permutation on validation WAPE stock_out_flag (past window)    0.266198       0.265996       0.000201        0.050687
+ lstm permutation on validation WAPE     list_price (past window)    0.266167       0.265996       0.000170        0.042924
+2026-09-09 08:40:05 | INFO     | demand_forecasting.feature_importance | transformer top features:
+      model                         method                     feature  wape_after  baseline_wape  wape_increase  importance_pct
+transformer permutation on validation WAPE demand_target (past window)    0.599057       0.271054       0.328004       64.637243
+transformer permutation on validation WAPE   promo_flag (known future)    0.341549       0.271054       0.070495       13.891945
+transformer permutation on validation WAPE           category (static)    0.316608       0.271054       0.045554        8.976957
+transformer permutation on validation WAPE        subcategory (static)    0.292095       0.271054       0.021042        4.146498
+transformer permutation on validation WAPE             sku_id (static)    0.289392       0.271054       0.018338        3.613770
+transformer permutation on validation WAPE            channel (static)    0.281659       0.271054       0.010605        2.089782
+transformer permutation on validation WAPE              brand (static)    0.281615       0.271054       0.010561        2.081236
+transformer permutation on validation WAPE  discount_pct (past window)    0.271974       0.271054       0.000920        0.181317
+transformer permutation on validation WAPE    promo_flag (past window)    0.271964       0.271054       0.000911        0.179436
+transformer permutation on validation WAPE           store_id (static)    0.271744       0.271054       0.000690        0.136063
+2026-09-09 08:40:05 | INFO     | demand_forecasting.feature_importance | Feature importance written:
+{
+  "models": [
+    "catboost",
+    "lightgbm",
+    "lstm",
+    "transformer",
+    "xgboost"
+  ],
+  "path": "reports/v2/feature_importance.csv",
+  "rows": 50
+}
