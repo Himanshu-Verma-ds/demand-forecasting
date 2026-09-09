@@ -509,3 +509,34 @@ The deliverable covers all 1,004 active series; the full file is `forecast_all_m
 Two things stand out in these tables. Every model lifts on 6, 7, 13 and 14 January, which are the two Saturdays and Sundays in the window — the weekend seasonality found in the EDA, reproduced independently by six models on data none of them has seen. I did not prompt that; it falls out of the lag and calendar features.
 
 The second is less comfortable. The spread between models on a single series is wider than the aggregate figures suggest, and on the highest-volume pair the daily gap between the lowest and highest model runs to roughly 30 units. That is the same 6% estate-level disagreement from section 7, but seen at the level a planner actually places an order, and it is the strongest practical argument for handing them a range rather than a single number.
+## 13. What I benchmarked against
+
+A WAPE of 0.27 means nothing on its own. The only question worth asking is whether it beats the cheapest thing that could possibly work, so I scored three naive baselines on exactly the same windows, rows and metrics as the models.
+
+| Baseline | How it forecasts | Test WAPE | Test MAE |
+|---|---|---|---|
+| Last value | Carries the final observed day flat across the horizon | 0.4938 | 30.8 |
+| Seasonal naive (weekly) | Same weekday from the most recent complete week at the origin | 0.4240 | 26.5 |
+| **28-day moving average** | Mean of the last 28 observed days, held flat | **0.3118** | **19.5** |
+
+**The 28-day moving average is the baseline I would hold the models to.** Seasonal naive is the conventional choice for weekly-seasonal retail data and it is what I expected to use, but it scores 0.4240 against the moving average's 0.3118. Picking the weaker reference would have flattered every model by about ten points of WAPE, so the moving average is the honest bar.
+
+That it wins is not a surprise in hindsight. The feature importance in section 11 puts the 28-day rolling mean of demand at 70% of LightGBM's gain and the past demand window at 65% of the Transformer's. The models and the baseline are leaning on the same thing; the models just do it conditionally, with promotions and calendar on top.
+
+### How the models compare
+
+| Model | Test WAPE | vs 28-day MA | vs seasonal naive | vs last value |
+|---|---|---|---|---|
+| Transformer | 0.2747 | **+11.9%** | +35.2% | +44.4% |
+| LSTM | 0.2673 | **+14.3%** | +36.9% | +45.9% |
+| CatBoost | 0.2683 | **+14.0%** | +36.7% | +45.7% |
+| XGBoost | 0.2714 | **+13.0%** | +36.0% | +45.0% |
+| LightGBM | 0.2704 | **+13.3%** | +36.2% | +45.2% |
+| TiDE | 0.2694 | **+13.6%** | +36.5% | +45.4% |
+| *28-day moving average* | *0.3118* | *—* | *+26.5%* | *+36.8%* |
+
+Every model clears the bar, but not by a landslide: 12% to 14% better than a 28-day average, and the spread between the best and worst model (2 points) is small next to the gap between the models and the baseline. Against seasonal naive the same models look far stronger, around 37%, which is exactly why the choice of reference matters and why I would quote the moving-average number.
+
+A 14% improvement over a one-line rule is a real result and I would defend it, but it also sets expectations. Anyone hoping a neural network would halve the error on this data should look at that column first. It is further evidence for the conclusion in section 8: the ceiling here is the information in the features, not the model on top of them.
+
+One caveat I would raise before anyone quotes these numbers. All three baselines forecast from the same fixed origin as the models, on the same rows, so the comparison is fair — but it is still a single 14-day window. The rolling-origin work in section 10 would firm up the margin as much as it would the model ranking.
