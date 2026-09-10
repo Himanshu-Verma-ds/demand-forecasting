@@ -1,0 +1,9 @@
+# Serving contract for the API - exactly one model gets loaded.
+# Best validation WAPE but over-forecasts test by +7.32% (~64k phantom units).
+# val_wape=0.26542  test_wape=0.274709  test_bias_pct=7.3171%
+
+selected_model:
+  name: transformer
+  family: dl
+  model_type: transformer
+  artifact_path: artifacts_v2/transformer/model.pt

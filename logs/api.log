@@ -14,3 +14,85 @@
 2026-09-10 03:43:45 | INFO     | demand_forecasting.api | Returned 28 forecast rows for 2 series
 2026-09-10 03:43:45 | INFO     | demand_forecasting.api | Forecast request received with 3 future covariate rows
 2026-09-10 03:43:50 | WARNING  | demand_forecasting.api | Rejected forecast request: Series ('STORE0001', 'SKU0001') must contain exactly 14 future rows; found 3
+2026-09-10 03:47:15 | INFO     | demand_forecasting.api | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "history_csv": "data/raw/data.csv",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "registry_path": "configs/serving_registry.yaml",
+  "started_at_utc": "2026-09-10T03:47:15.719016+00:00",
+  "step": "api",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-10 03:51:13 | INFO     | demand_forecasting.api | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "history_csv": "data/raw/data.csv",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "registry_path": "configs/serving_registry_all_v2.yaml",
+  "started_at_utc": "2026-09-10T03:51:13.148941+00:00",
+  "step": "api",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-10 03:56:38 | INFO     | demand_forecasting.api | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "history_csv": "data/raw/data.csv",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "registry_path": "configs/serving_registry.yaml",
+  "started_at_utc": "2026-09-10T03:56:38.749634+00:00",
+  "step": "api",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-10 03:57:15 | INFO     | demand_forecasting.api | Forecast request received with 42 future covariate rows
+2026-09-10 03:57:37 | ERROR    | demand_forecasting.api | Forecast generation failed
+Traceback (most recent call last):
+  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/src/demand_forecasting/api.py", line 244, in forecast
+    output = run_selected(
+        history_path=history_path,
+    ...<2 lines>...
+        config_path=config_path,
+    )
+  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/src/demand_forecasting/inference_router.py", line 51, in run_selected
+    bundle = MLBundle.load(artifact_path)
+  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/src/demand_forecasting/models/ml.py", line 69, in load
+    return joblib.load(path)
+           ~~~~~~~~~~~^^^^^^
+  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/venv/lib/python3.13/site-packages/joblib/numpy_pickle.py", line 755, in load
+    obj = _unpickle(
+        fobj,
+    ...<2 lines>...
+        mmap_mode=validated_mmap_mode,
+    )
+  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/venv/lib/python3.13/site-packages/joblib/numpy_pickle.py", line 632, in _unpickle
+    obj = unpickler.load()
+  File "/home/himanshu/miniconda3/lib/python3.13/pickle.py", line 1256, in load
+    dispatch[key[0]](self)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/himanshu/miniconda3/lib/python3.13/pickle.py", line 1581, in load_stack_global
+    self.append(self.find_class(module, name))
+                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/himanshu/miniconda3/lib/python3.13/pickle.py", line 1622, in find_class
+    __import__(module, level=0)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'demand_forecasting'
+2026-09-10 03:58:03 | INFO     | demand_forecasting.api | Run context:
+{
+  "config_path": "configs/config.yaml",
+  "history_csv": "data/raw/data.csv",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "registry_path": "configs/serving_registry.yaml",
+  "started_at_utc": "2026-09-10T03:58:03.755207+00:00",
+  "step": "api",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-10 03:58:04 | INFO     | demand_forecasting.api | Forecast request received with 42 future covariate rows
+2026-09-10 03:58:59 | INFO     | demand_forecasting.api | Returned 42 forecast rows for 3 series

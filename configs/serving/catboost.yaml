@@ -1,0 +1,9 @@
+# Serving contract for the API - exactly one model gets loaded.
+# Production recommendation: near-unbiased on test (+0.99%), ~7s start-up.
+# val_wape=0.271929  test_wape=0.268329  test_bias_pct=0.993%
+
+selected_model:
+  name: catboost
+  family: ml
+  model_type: catboost
+  artifact_path: artifacts_v2/catboost/model.joblib

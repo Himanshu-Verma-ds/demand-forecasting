@@ -1,0 +1,9 @@
+# Serving contract for the API - exactly one model gets loaded.
+# Least biased tree model on test (+0.86%). Cheapest to train.
+# val_wape=0.272172  test_wape=0.270395  test_bias_pct=0.8615%
+
+selected_model:
+  name: lightgbm
+  family: ml
+  model_type: lightgbm
+  artifact_path: artifacts_v2/lightgbm/model.joblib

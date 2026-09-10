@@ -1,0 +1,9 @@
+# Serving contract for the API - exactly one model gets loaded.
+# Under-forecasts test by -1.27%.
+# val_wape=0.272134  test_wape=0.271357  test_bias_pct=-1.2729%
+
+selected_model:
+  name: xgboost
+  family: ml
+  model_type: xgboost
+  artifact_path: artifacts_v2/xgboost/model.joblib

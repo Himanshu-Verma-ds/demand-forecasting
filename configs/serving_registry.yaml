@@ -1,0 +1,9 @@
+# Serving contract for the API: one model, the one that gets loaded.
+# CatBoost is the production recommendation (see final_report §12) - it is
+# near-unbiased, cheap to run, and starts in ~13s because the ml adapter does
+# not pull in torch or darts.
+selected_model:
+  name: catboost
+  family: ml
+  model_type: catboost
+  artifact_path: artifacts_v2/catboost/model.joblib

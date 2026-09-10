@@ -1,0 +1,9 @@
+# Serving contract for the API - exactly one model gets loaded.
+# Best test WAPE of the sequence models (-1.10% bias). Pulls in torch: ~145s start-up.
+# val_wape=0.266173  test_wape=0.267337  test_bias_pct=-1.1044%
+
+selected_model:
+  name: lstm
+  family: dl
+  model_type: lstm
+  artifact_path: artifacts_v2/lstm/model.pt

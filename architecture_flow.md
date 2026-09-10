@@ -2982,3 +2982,229 @@ existing document so manual Word edits survive.
 
 **Orchestration:** `scripts/run_v1.sh` runs the whole chain with per-family trial counts, a
 pass/fail trail, and skip-if-exists resume. `scripts/run_all.sh` is the generic equivalent.
+
+
+---
+
+## 22. Serving: running the forecast API end to end
+
+Verified on 2026-09-10 against `configs/serving_registry.yaml` (CatBoost). The server came up
+in 7s and a 3-series request returned HTTP 200 with 42 forecast rows.
+
+
+The service loads whichever model the **serving registry** names. Two ready-made registries exist:
+
+| Registry | Serves | Start-up | When to use |
+|---|---|---|---|
+| `configs/serving_registry.yaml` | CatBoost (`family: ml`) | ~7s | Default. Near-unbiased on test (+0.99%), no torch import. |
+| `configs/model_registry_v2.yaml` | Transformer (`family: dl`) | ~145s | Best validation WAPE, but +7.32% test bias. |
+
+`configs/model_registry_all_v2.yaml` is **not** a serving registry — it is the audit record of all
+six models and has a `models:` list rather than a `selected_model:` entry. Pointing the API at it
+fails with `No selected_model entry found`.
+
+#### 1. Build the request body
+
+The API needs one row per Store-SKU per future date carrying only genuinely-known-future fields.
+Generate it from history rather than writing it by hand:
+
+```bash
+export PYTHONPATH=src
+
+# Full horizon: 1,004 series x 14 days = 14,056 rows
+python -m demand_forecasting.make_future_template \
+  --config configs/config.yaml \
+  --output-csv  reports/future_covariates.csv \
+  --output-json reports/forecast_request.json
+
+# Small body for a smoke test: 3 series x 14 days = 42 rows
+python -m demand_forecasting.make_future_template \
+  --config configs/config.yaml --series-limit 3 \
+  --output-csv  reports/future_covariates_smoke.csv \
+  --output-json reports/forecast_request_smoke.json
+```
+
+The fields emitted are driven by the `*_known_future` contract in the config, so the body changes
+automatically if that contract changes. With the current settings it is
+`date, store_id, sku_id, is_holiday, promo_flag` — price and weather are deliberately absent
+because they are not known at the forecast origin.
+
+#### 2. Start the server
+
+Environment variables are read by the **server** process, so they must be exported in the terminal
+running uvicorn — not in the terminal running curl.
+
+```bash
+export PYTHONPATH=src
+export MODEL_REGISTRY_PATH=configs/serving_registry.yaml
+export CONFIG_PATH=configs/config.yaml
+export HISTORY_CSV=data/raw/data.csv
+
+python -m uvicorn demand_forecasting.api:app --host 127.0.0.1 --port 8000
+```
+
+Note the module path is `demand_forecasting.api:app` with `PYTHONPATH=src` — **not**
+`src.demand_forecasting.api:app`. The saved model artifacts were pickled against the
+`demand_forecasting.*` module path, so importing the package under a different name makes
+`joblib.load` fail with `No module named 'demand_forecasting'`.
+
+Wait for the health check before posting:
+
+```bash
+until curl -s http://127.0.0.1:8000/health; do sleep 1; done
+```
+
+#### 3. Call it
+
+```bash
+# Smoke test: 3 series, returns 42 rows
+curl -s -X POST http://127.0.0.1:8000/forecast \
+  -H "Content-Type: application/json" \
+  -d @reports/forecast_request_smoke.json \
+  -o reports/forecast_response_smoke.json \
+  -w "HTTP %{http_code}  %{time_total}s\n"
+
+# Full horizon: all 1,004 series
+curl -s -X POST http://127.0.0.1:8000/forecast \
+  -H "Content-Type: application/json" \
+  -d @reports/forecast_request.json \
+  -o reports/forecast_response.json \
+  -w "HTTP %{http_code}  %{time_total}s\n"
+
+# Or by hand - one row per series per future date
+curl -X POST http://127.0.0.1:8000/forecast \
+  -H "Content-Type: application/json" \
+  -d '{"future_covariates":[
+        {"date":"2024-01-01","store_id":"STORE0001","sku_id":"SKU0086","is_holiday":1,"promo_flag":1},
+        {"date":"2024-01-02","store_id":"STORE0001","sku_id":"SKU0086","is_holiday":0,"promo_flag":0}
+      ]}'
+```
+
+Response shape:
+
+```json
+{
+  "forecast_horizon": 14,
+  "forecast_count": 42,
+  "forecasts": [
+    {"date":"2024-01-01","store_id":"STORE0001","sku_id":"SKU0001","prediction":101.93},
+    {"date":"2024-01-01","store_id":"STORE0001","sku_id":"SKU0002","prediction":69.81}
+  ]
+}
+```
+
+A 3-series call takes ~55s: the cost is dominated by reading the 1.07M-row history and running the
+14 recursive feature-rebuild passes, both of which are near-constant regardless of how many series
+are requested. A full 1,004-series call is not much slower.
+
+#### Docker
+
+```bash
+docker build -t fmcg-forecast-api .
+
+docker run --rm -p 8000:8000 \
+  -e MODEL_REGISTRY_PATH=configs/serving_registry.yaml \
+  -v "$PWD/data:/app/data" \
+  -v "$PWD/artifacts_v2:/app/artifacts_v2" \
+  -v "$PWD/configs:/app/configs" \
+  -v "$PWD/logs:/app/logs" \
+  fmcg-forecast-api
+```
+
+Mount data, artifacts and configs rather than baking them into the image; mount `logs` so the
+service's rotating log survives the container. The Dockerfile already sets `PYTHONPATH=src`.
+
+#### Failure modes
+
+| Response | Cause | Fix |
+|---|---|---|
+| `Model registry not found: <path>` | `MODEL_REGISTRY_PATH` names a file that does not exist | Use `configs/serving_registry.yaml`; check for typos |
+| `No selected_model entry found` | Pointed at an audit registry (`model_registry_all_v2.yaml`) | Use a registry with a `selected_model:` block |
+| `No module named 'demand_forecasting'` | Started as `src.demand_forecasting.api:app` | Use `PYTHONPATH=src` + `demand_forecasting.api:app` |
+| 422 with `Field required` | Body is not wrapped in `{"future_covariates": [...]}` | Regenerate with `make_future_template` |
+| 422 about dates or duplicates | Not exactly `horizon` contiguous days per series from the day after history ends | Regenerate with `make_future_template` |
+
+To serve a different model, point `MODEL_REGISTRY_PATH` at another registry — the API is
+model-agnostic and `inference_router.py` dispatches on `family` (`ml` / `dl` / `darts`). Note the
+Darts adapter requires **every trained series** in the request, so a single-series call fails when a
+Darts model is promoted; the ML and DL adapters accept any subset.
+
+The request must contain exactly `horizon` contiguous days per series, starting the day after the
+history ends, with no duplicates; anything else is rejected with a 422 explaining why. Static
+attributes are joined from each series' latest history row.
+
+
+---
+
+## 23. Batch inference across all six models
+
+Verified 2026-09-10.
+
+
+`run_final_inference.py` runs one forecast per model listed in a manifest CSV and writes a single
+combined output, so all six models can be compared side by side on the same 14-day horizon.
+
+Note the shipped `reports/v2/best_models.csv` holds only the **three per-family winners**
+(transformer, catboost, tide). To forecast with all six, use the full manifest:
+
+```bash
+export PYTHONPATH=src
+
+python -m demand_forecasting.run_final_inference \
+  --config configs/config.yaml \
+  --best-models reports/v2/all_models_for_inference.csv \
+  --outdir reports/v2_all
+```
+
+The manifest needs only three columns — `model`, `family`, `artifact_path`. It is ordered
+cheapest-first, because the `ml` adapter never imports torch or darts:
+
+| model | family | artifact |
+|---|---|---|
+| catboost | ml | `artifacts_v2/catboost/model.joblib` |
+| lightgbm | ml | `artifacts_v2/lightgbm/model.joblib` |
+| xgboost | ml | `artifacts_v2/xgboost/model.joblib` |
+| lstm | dl | `artifacts_v2/lstm/model.pt` |
+| transformer | dl | `artifacts_v2/transformer/model.pt` |
+| tide | darts | `artifacts_v2/tide/model.pt` (+ `metadata.joblib` alongside) |
+
+Outputs land in `--outdir`:
+
+| File | Shape |
+|---|---|
+| `forecast_store_sku.csv` | long — `date, store_id, sku_id, prediction, model, family` |
+| `forecast_store_sku_wide.csv` | wide — one row per Store-SKU-date, one column per model |
+| `store_sku_forecast_and_metrics.csv` | per Store-SKU per model: forecast totals joined to held-out test accuracy |
+
+The third file joins against `best_models_per_series_metrics.csv` **inside `--outdir`**. That file
+ships covering only the three champions, so a six-model run needs the six-model version generated
+first or the test-accuracy columns come back empty for lightgbm, xgboost and lstm. It is derived
+from each model's `artifacts_v2/<model>/test_predictions.csv`.
+
+A failure in one model is logged and skipped rather than aborting the run, so a broken adapter never
+costs you the other five forecasts.
+
+#### Verified run
+
+Six models, 1,004 series, horizon `2024-01-01..2024-01-14`: 84,336 forecast rows, zero nulls, zero
+negatives. Wall clock ~6.5 min total.
+
+| model | family | time | 14-day total units |
+|---|---|---|---|
+| catboost | ml | 40s | 804,418 |
+| lightgbm | ml | 33s | 790,566 |
+| xgboost | ml | 32s | 779,889 |
+| lstm | dl | 61s | 761,973 |
+| transformer | dl | 4s | 808,023 |
+| tide | darts | 3m 27s | 762,232 |
+
+The LSTM's 61s is almost entirely the one-time `torch` import — the transformer, running straight
+after it, took 4s. Order the manifest so the tree models run first and that import cost is paid once.
+
+The forward forecasts corroborate the held-out bias finding independently: the transformer projects
+808,023 units against the LSTM's 761,973, a 6.0% spread on the same 14 days with no ground truth
+involved. That is the same over-forecasting the test window showed at +7.32%, which is why CatBoost
+rather than the validation winner is the production recommendation.
+
+Models disagree by a mean of 8.84 units per Store-SKU-day (median 7.01, p95 20.75, max 67.08).
+`forecast_store_sku_wide.csv` puts them side by side for exactly this comparison.

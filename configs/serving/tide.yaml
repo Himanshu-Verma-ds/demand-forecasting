@@ -1,0 +1,10 @@
+# Serving contract for the API - exactly one model gets loaded.
+# Lowest test bias overall (-0.002%) but worst validation WAPE. Darts adapter requires ALL trained series per request.
+# val_wape=0.276222  test_wape=0.269424  test_bias_pct=-0.0022%
+
+selected_model:
+  name: tide
+  family: darts
+  model_type: tide
+  artifact_path: artifacts_v2/tide/model.pt
+  metadata_path: artifacts_v2/tide/metadata.joblib

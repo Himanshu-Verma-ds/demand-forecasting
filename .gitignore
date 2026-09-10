@@ -67,3 +67,12 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# ---- generated API payloads ----------------------------------------------
+# Request bodies and responses are derived from history in one command
+# (make_future_template) and the full-horizon body is ~2 MB. Regenerate rather
+# than track; see README section 10.
+reports/forecast_request*.json
+reports/forecast_response*.json
+reports/future_covariates*.csv
+forecast_response.json

@@ -1,0 +1,7 @@
+model,family,artifact_path,artifact_exists,val_wape,test_wape,test_bias_pct
+catboost,ml,artifacts_v2/catboost/model.joblib,True,0.271929,0.268329,0.993
+lightgbm,ml,artifacts_v2/lightgbm/model.joblib,True,0.272172,0.270395,0.8615
+xgboost,ml,artifacts_v2/xgboost/model.joblib,True,0.272134,0.271357,-1.2729
+lstm,dl,artifacts_v2/lstm/model.pt,True,0.266173,0.267337,-1.1044
+transformer,dl,artifacts_v2/transformer/model.pt,True,0.26542,0.274709,7.3171
+tide,darts,artifacts_v2/tide/model.pt,True,0.276222,0.269424,-0.0022

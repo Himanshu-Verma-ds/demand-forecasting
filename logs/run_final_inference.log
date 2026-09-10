@@ -1,21 +1,21 @@
-2026-09-09 06:20:05 | INFO     | demand_forecasting.run_final_inference | Run context:
+2026-09-10 04:03:07 | INFO     | demand_forecasting.run_final_inference | Run context:
 {
-  "best_models": "reports/v2/best_models.csv",
-  "config_path": "configs/config_v2.yaml",
+  "best_models": "reports/v2/all_models_for_inference.csv",
+  "config_path": "configs/config.yaml",
   "package_version": "0.1.0",
   "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
   "python": "3.13.11",
-  "started_at_utc": "2026-09-09T06:20:05.375111+00:00",
+  "started_at_utc": "2026-09-10T04:03:07.562872+00:00",
   "step": "run_final_inference",
   "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
 }
-2026-09-09 06:20:05 | INFO     | demand_forecasting.run_final_inference | Effective configuration:
+2026-09-10 04:03:07 | INFO     | demand_forecasting.run_final_inference | Effective configuration:
 {
   "bayes": {
     "log_trial_models": true,
     "max_tune_rows": 200000,
     "n_trials": 25,
-    "n_trials_dl": 4,
+    "n_trials_dl": 10,
     "objective_metric": "wape",
     "timeout_seconds": null,
     "tuning_models": [
@@ -39,13 +39,13 @@
     "batch_size": 256,
     "dropout": 0.15,
     "embedding_dim": 16,
-    "epochs": 50,
+    "epochs": 15,
     "hidden_size": 128,
     "learning_rate": 0.001,
     "max_train_windows": 150000,
     "num_layers": 2,
     "num_workers": 4,
-    "patience": 8,
+    "patience": 3,
     "transformer_d_model": 128,
     "transformer_heads": 4,
     "transformer_layers": 3,
@@ -112,187 +112,40 @@
   },
   "training": {
     "max_train_rows": null,
-    "mlflow_experiment": "fmcg-demand-forecasting-v2",
+    "mlflow_experiment": "fmcg-demand-forecasting-v1",
     "n_jobs": 4,
-    "save_dir": "artifacts_v2",
+    "save_dir": "artifacts",
     "selection_metric": "wape"
   }
 }
-2026-09-09 06:20:08 | INFO     | demand_forecasting.run_final_inference | Forecasting 2024-01-01..2024-01-14 for 1004 Store-SKU series
-2026-09-09 06:20:08 | INFO     | demand_forecasting.run_final_inference | Forecasting with transformer (dl)
-2026-09-09 06:20:26 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
-2026-09-09 06:20:26 | INFO     | demand_forecasting.run_final_inference | Forecasting with catboost (ml)
-2026-09-09 06:20:56 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
-2026-09-09 06:20:56 | INFO     | demand_forecasting.run_final_inference | Forecasting with tide (darts)
-2026-09-09 06:21:30 | ERROR    | demand_forecasting.run_final_inference | Inference failed for tide
-Traceback (most recent call last):
-  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/src/demand_forecasting/run_final_inference.py", line 93, in main
-    output = forecast_one(row, history, future, cfg)
-  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/src/demand_forecasting/run_final_inference.py", line 42, in forecast_one
-    return darts_forecast(
-        model_type=model_row["model"],
-    ...<4 lines>...
-        cfg=cfg,
-    )
-  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/src/demand_forecasting/inference_darts.py", line 211, in forecast
-    validate_future_coverage(history, future, metadata)
-    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project/src/demand_forecasting/inference_darts.py", line 95, in validate_future_coverage
-    raise ValueError(f"Expected {horizon} future rows for series {key}, found {len(group)}")
-ValueError: Expected 14 future rows for series ('STORE0013', 'SKU0073'), found 0
-2026-09-09 06:21:30 | INFO     | demand_forecasting.run_final_inference | Store-SKU summary: 2008 rows across 2 models
-2026-09-09 06:21:30 | INFO     | demand_forecasting.run_final_inference | Final forecast written:
+2026-09-10 04:03:13 | INFO     | demand_forecasting.run_final_inference | Forecasting 2024-01-01..2024-01-14 for 1004 Store-SKU series
+2026-09-10 04:03:13 | INFO     | demand_forecasting.run_final_inference | Forecasting with catboost (ml)
+2026-09-10 04:03:53 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
+2026-09-10 04:03:53 | INFO     | demand_forecasting.run_final_inference | Forecasting with lightgbm (ml)
+2026-09-10 04:04:26 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
+2026-09-10 04:04:26 | INFO     | demand_forecasting.run_final_inference | Forecasting with xgboost (ml)
+2026-09-10 04:04:58 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
+2026-09-10 04:04:58 | INFO     | demand_forecasting.run_final_inference | Forecasting with lstm (dl)
+2026-09-10 04:05:59 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
+2026-09-10 04:05:59 | INFO     | demand_forecasting.run_final_inference | Forecasting with transformer (dl)
+2026-09-10 04:06:03 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
+2026-09-10 04:06:03 | INFO     | demand_forecasting.run_final_inference | Forecasting with tide (darts)
+2026-09-10 04:09:30 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
+2026-09-10 04:09:31 | INFO     | demand_forecasting.run_final_inference | Store-SKU summary: 6024 rows across 6 models
+2026-09-10 04:09:31 | INFO     | demand_forecasting.run_final_inference | Final forecast written:
 {
   "horizon_dates": "2024-01-01..2024-01-14",
-  "long": "reports/v2/v1_forecast_store_sku.csv",
+  "long": "reports/v2_all/forecast_store_sku.csv",
   "models": [
     "catboost",
-    "transformer"
-  ],
-  "rows": 28112,
-  "series": 1004,
-  "store_sku_summary": "reports/v2/v1_store_sku_forecast_and_metrics.csv",
-  "wide": "reports/v2/v1_forecast_store_sku_wide.csv"
-}
-2026-09-09 06:22:37 | INFO     | demand_forecasting.run_final_inference | Run context:
-{
-  "best_models": "reports/v2/best_models.csv",
-  "config_path": "configs/config_v2.yaml",
-  "package_version": "0.1.0",
-  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
-  "python": "3.13.11",
-  "started_at_utc": "2026-09-09T06:22:37.720005+00:00",
-  "step": "run_final_inference",
-  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
-}
-2026-09-09 06:22:37 | INFO     | demand_forecasting.run_final_inference | Effective configuration:
-{
-  "bayes": {
-    "log_trial_models": true,
-    "max_tune_rows": 200000,
-    "n_trials": 25,
-    "n_trials_dl": 4,
-    "objective_metric": "wape",
-    "timeout_seconds": null,
-    "tuning_models": [
-      "lightgbm",
-      "xgboost",
-      "catboost"
-    ]
-  },
-  "data": {
-    "date_col": "date",
-    "horizon": 14,
-    "lookback": 56,
-    "raw_path": "data/raw/data.csv",
-    "series_cols": [
-      "store_id",
-      "sku_id"
-    ],
-    "target_col": "units_sold"
-  },
-  "dl": {
-    "batch_size": 256,
-    "dropout": 0.15,
-    "embedding_dim": 16,
-    "epochs": 50,
-    "hidden_size": 128,
-    "learning_rate": 0.001,
-    "max_train_windows": 150000,
-    "num_layers": 2,
-    "num_workers": 4,
-    "patience": 8,
-    "transformer_d_model": 128,
-    "transformer_heads": 4,
-    "transformer_layers": 3,
-    "weight_decay": 0.0001
-  },
-  "features": {
-    "demand_lags": [
-      1,
-      7,
-      14,
-      28
-    ],
-    "demand_roll_windows": [
-      7,
-      14,
-      28
-    ],
-    "price_known_future": false,
-    "promo_known_future": true,
-    "stock_roll_window": 28,
-    "stockout_imputation_min_periods": 7,
-    "stockout_imputation_window": 56,
-    "stockout_lags": [
-      1,
-      7,
-      14
-    ],
-    "stockout_percentage_uplift": 0.5,
-    "stockout_sample_weight": 0.5,
-    "stockout_target_mode": "none",
-    "weather_known_future": false
-  },
-  "hierarchy": {
-    "exclude_stockouts_for_shares": true,
-    "share_target_col": "units_sold",
-    "share_window_days": 56
-  },
-  "logging": {
-    "backup_count": 14,
-    "console": true,
-    "dir": "logs",
-    "level": "INFO",
-    "utc": false
-  },
-  "ml": {
-    "models": [
-      "lightgbm",
-      "xgboost",
-      "catboost"
-    ]
-  },
-  "monitoring": {
-    "promo_rate_relative_change_alert": 0.3,
-    "psi_alert": 0.25,
-    "psi_warning": 0.1
-  },
-  "project": {
-    "name": "fmcg_demand_forecasting",
-    "random_seed": 42
-  },
-  "split": {
-    "test_days": 14,
-    "validation_days": 14
-  },
-  "training": {
-    "max_train_rows": null,
-    "mlflow_experiment": "fmcg-demand-forecasting-v2",
-    "n_jobs": 4,
-    "save_dir": "artifacts_v2",
-    "selection_metric": "wape"
-  }
-}
-2026-09-09 06:22:40 | INFO     | demand_forecasting.run_final_inference | Forecasting 2024-01-01..2024-01-14 for 1004 Store-SKU series
-2026-09-09 06:22:40 | INFO     | demand_forecasting.run_final_inference | Forecasting with transformer (dl)
-2026-09-09 06:22:56 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
-2026-09-09 06:22:56 | INFO     | demand_forecasting.run_final_inference | Forecasting with catboost (ml)
-2026-09-09 06:23:24 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
-2026-09-09 06:23:24 | INFO     | demand_forecasting.run_final_inference | Forecasting with tide (darts)
-2026-09-09 06:25:06 | INFO     | demand_forecasting.run_final_inference |   -> 14,056 rows
-2026-09-09 06:25:06 | INFO     | demand_forecasting.run_final_inference | Store-SKU summary: 3012 rows across 3 models
-2026-09-09 06:25:06 | INFO     | demand_forecasting.run_final_inference | Final forecast written:
-{
-  "horizon_dates": "2024-01-01..2024-01-14",
-  "long": "reports/v2/v1_forecast_store_sku.csv",
-  "models": [
-    "catboost",
+    "lightgbm",
+    "lstm",
     "tide",
-    "transformer"
+    "transformer",
+    "xgboost"
   ],
-  "rows": 42168,
+  "rows": 84336,
   "series": 1004,
-  "store_sku_summary": "reports/v2/v1_store_sku_forecast_and_metrics.csv",
-  "wide": "reports/v2/v1_forecast_store_sku_wide.csv"
+  "store_sku_summary": "reports/v2_all/store_sku_forecast_and_metrics.csv",
+  "wide": "reports/v2_all/forecast_store_sku_wide.csv"
 }
