@@ -1,6 +1,16 @@
-2026-09-08 14:51:57 | INFO     | demand_forecasting.api | Forecast request received with 1 future covariate rows
-2026-09-08 14:52:01 | WARNING  | demand_forecasting.api | Rejected forecast request: Series ('STORE0001', 'SKU0086') must contain exactly 14 future rows; found 1
-2026-09-08 16:20:05 | INFO     | demand_forecasting.api | Forecast request received with 14 future covariate rows
-2026-09-08 16:20:10 | INFO     | demand_forecasting.api | Returned 14 forecast rows for 1 series
-2026-09-08 18:25:11 | INFO     | demand_forecasting.api | Forecast request received with 28 future covariate rows
-2026-09-08 18:25:13 | INFO     | demand_forecasting.api | Returned 28 forecast rows for 2 series
+2026-09-10 03:42:47 | INFO     | demand_forecasting.api | Run context:
+{
+  "config_path": "configs/config_v2.yaml",
+  "history_csv": "data/raw/data.csv",
+  "package_version": "0.1.0",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.13.11",
+  "registry_path": "configs/_serving_catboost.yaml",
+  "started_at_utc": "2026-09-10T03:42:47.429542+00:00",
+  "step": "api",
+  "working_dir": "/mnt/d/Himanshu/code/fmcg_demand_forecasting_project/ml_assignment_project"
+}
+2026-09-10 03:42:48 | INFO     | demand_forecasting.api | Forecast request received with 28 future covariate rows
+2026-09-10 03:43:45 | INFO     | demand_forecasting.api | Returned 28 forecast rows for 2 series
+2026-09-10 03:43:45 | INFO     | demand_forecasting.api | Forecast request received with 3 future covariate rows
+2026-09-10 03:43:50 | WARNING  | demand_forecasting.api | Rejected forecast request: Series ('STORE0001', 'SKU0001') must contain exactly 14 future rows; found 3

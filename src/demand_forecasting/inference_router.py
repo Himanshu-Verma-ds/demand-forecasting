@@ -6,10 +6,11 @@ import yaml
 
 from .config import load_config
 from .data import read_raw
-from .inference_darts import forecast as darts_forecast
-from .inference_dl import forecast as dl_forecast
-from .inference_ml import recursive_forecast
-from .models.ml import MLBundle
+
+# Adapter imports are deliberately deferred into the dispatch branches below.
+# Importing them here pulls in torch, pytorch_lightning and darts at module load, which
+# costs ~145s of API start-up even when the promoted model is a LightGBM. Loading only the
+# family actually being served brings a tree-model start-up down to a few seconds.
 
 
 def run_selected(
@@ -44,10 +45,15 @@ def run_selected(
     artifact_path = selected["artifact_path"]
 
     if family == "ml" or model_name in {"lightgbm", "xgboost", "catboost"}:
+        from .inference_ml import recursive_forecast
+        from .models.ml import MLBundle
+
         bundle = MLBundle.load(artifact_path)
         return recursive_forecast(bundle, history, future, cfg)
 
     if family == "dl" or model_name in {"lstm", "transformer"}:
+        from .inference_dl import forecast as dl_forecast
+
         model_type = selected.get("model_type", model_name)
         return dl_forecast(
             model_path=artifact_path,
@@ -57,6 +63,8 @@ def run_selected(
         )
 
     if family == "darts" or model_name in {"tide", "tsmixer"}:
+        from .inference_darts import forecast as darts_forecast
+
         metadata_path = selected.get("metadata_path")
 
         if not metadata_path:
